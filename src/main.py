@@ -24,7 +24,6 @@ def log_debug(fmt, *args):
     print("[DEBUG] ", formatted);
 
 def log_error(fmt, *args):
-    return;
     formatted = fmt.format(*args);
     print("[ERROR] ", formatted);
 
@@ -73,13 +72,35 @@ def C_clean_repo(s): return cowtermcolor.green  (s) + cowtermcolor.reset();
 def C_dirty_repo(s): return cowtermcolor.magenta(s) + cowtermcolor.reset();
 
 def colorize_repo_name(git_repo):
-    # os.path.basename
-    pretty_name = (git_repo.root_path);
+    pretty_name = os.path.basename(git_repo.root_path);
     if(git_repo.is_dirty):
-        return C_dirty_repo(pretty_name);
-    return C_clean_repo(pretty_name);
+        pretty_name = C_dirty_repo(pretty_name);
+    else:
+        pretty_name = C_clean_repo(pretty_name);
 
+    prefix = "[Submodule]" if git_repo.is_submodule else "[Repo]";
+    return "{0} {1}".format(prefix, pretty_name);
 
+def colorize_branch_name(branch_name):
+    return cowtermcolor.cyan(branch_name) + cowtermcolor.reset();
+
+tab_size = -1;
+def tab_indent():
+    global tab_size;
+    tab_size += 1;
+
+def tab_unindent():
+    global tab_size;
+    tab_size -= 1;
+
+def tab_print(*args):
+    global tab_size;
+    tabs     = "";
+    args_str = str(*args);
+    if(tab_size > 0):
+        tabs = ("...." * tab_size);
+
+    print("{0}{1}".format(tabs, args_str));
 
 class GitBranch:
     def __init__(self, branch_name, repo):
@@ -100,7 +121,9 @@ class GitBranch:
         if(not self.is_current):
             return;
 
-        status_result = git_exec(self.repo.root_path, "status -s");
+        status_result, error_code = git_exec(self.repo.root_path, "status -s");
+        ## @todo(stdmatt): error handling...
+
         for line in status_result.split("\n"):
             self.is_dirty = True;
 
@@ -123,11 +146,12 @@ class GitBranch:
                 self.untracked.append(path);
 
 class GitRepo:
-    def __init__(self, root_path):
+    def __init__(self, root_path, is_submodule = False):
         global git_paths;
         git_paths.append(normalize_path(root_path));
 
         self.root_path      = root_path;
+        self.is_submodule   = is_submodule;
         self.branches       = [];
         self.current_branch = None;
         self.is_dirty       = False;
@@ -152,22 +176,30 @@ class GitRepo:
 
             submodule_path = line[len("submodule."):-(len(".path"))];
             submodule_path = os.path.join(self.root_path, submodule_path);
+
+            if(not os.path.isdir(submodule_path)):
+                pdb.set_trace();
+
             log_debug(
                 "Found submodule of ({0}) at ({1})",
                 self.root_path,
                 submodule_path
             );
 
-            git_repo = GitRepo(submodule_path);
+            git_repo = GitRepo(submodule_path, True);
             self.submodules.append(git_repo);
 
     def get_branches(self):
-        result = git_exec(self.root_path, "branch");
+        result, error_code = git_exec(self.root_path, "branch");
+        ## todo(stdmatt): error handling...
         for branch_name in result.splitlines():
             branch = GitBranch(branch_name, self);
             self.branches.append(branch);
             if(branch.is_current):
                 self.current_branch = branch;
+
+        for submodule in self.submodules:
+            submodule.get_branches();
 
     def check_status(self):
         for branch in self.branches:
@@ -175,12 +207,58 @@ class GitRepo:
             if(branch.is_dirty):
                 self.is_dirty = True;
 
+        for submodule in self.submodules:
+            submodule.check_status();
+
+    def print_result(self):
+        if(not self.is_dirty):
+            return;
+
+        tab_indent();
+
+        repo_pretty_name = colorize_repo_name(self);
+        tab_print(repo_pretty_name);
+
+        for branch in self.branches:
+            if(branch is None):
+                pdb.set_trace();
+
+            len_modified  = len(branch.modified  );
+            len_added     = len(branch.added     );
+            len_deleted   = len(branch.deleted   );
+            len_renamed   = len(branch.renamed   );
+            len_copied    = len(branch.copied    );
+            len_updated   = len(branch.updated   );
+            len_untracked = len(branch.untracked );
+
+            status_str = "";
+            if(len_added    ): status_str += "{0}({1}) ".format(FG(GIT_STATUS_ADDED   ),  len_added   );
+            if(len_copied   ): status_str += "{0}({1}) ".format(FG(GIT_STATUS_COPIED  ),  en_copied  );
+            if(len_deleted  ): status_str += "{0}({1}) ".format(FR(GIT_STATUS_DELETED ),  len_deleted );
+            if(len_modified ): status_str += "{0}({1}) ".format(FY(GIT_STATUS_MODIFIED),  len_modified);
+            if(len_renamed  ): status_str += "{0}({1}) ".format(FY(GIT_STATUS_RENAMED ),  len_renamed );
+            if(len_updated  ): status_str += "{0}({1}) ".format(FY(GIT_STATUS_UPDATED ),  len_updated );
+            if(len_untracked): status_str += "{0}({1}) ".format(BR(GIT_STATUS_UNTRACKED),  len_untracked );
+
+
+            if(len(status_str) == 0):
+                continue;
+
+            branch_name = colorize_branch_name(branch.name);
+            tab_indent();
+            tab_print("{0} - {1}".format(branch_name, status_str));
+            tab_unindent();
+
+        for submodule in self.submodules:
+            submodule.print_result();
+        tab_unindent();
+
 
 def main():
     global git_paths;
     start_path = os.path.join(
         get_home_path(),
-        "Documents/Projects/stdmatt/games/xonix"
+        "Documents/Projects/stdmatt/games"
     );
 
     ##
@@ -198,7 +276,6 @@ def main():
         git_repos.append(git_repo);
 
 
-    return;
     ##
     ## Update the Repositories.
     log_info("Found {0} repos...", len(git_repos));
@@ -217,33 +294,6 @@ def main():
     ## Show the results.
     log_info("Results of ({0}) repos...", len(repos_to_show));
     for git_repo in repos_to_show:
-        branch = git_repo.current_branch;
-        len_modified  = len(branch.modified  );
-        len_added     = len(branch.added     );
-        len_deleted   = len(branch.deleted   );
-        len_renamed   = len(branch.renamed   );
-        len_copied    = len(branch.copied    );
-        len_updated   = len(branch.updated   );
-        len_untracked = len(branch.untracked );
-
-        status_str = "";
-        if(len_added    ): status_str += "{0}({1}) ".format(FG(GIT_STATUS_ADDED   ),  len_added   );
-        if(len_copied   ): status_str += "{0}({1}) ".format(FG(GIT_STATUS_COPIED  ),  en_copied  );
-        if(len_deleted  ): status_str += "{0}({1}) ".format(FR(GIT_STATUS_DELETED ),  len_deleted );
-        if(len_modified ): status_str += "{0}({1}) ".format(FY(GIT_STATUS_MODIFIED),  len_modified);
-        if(len_renamed  ): status_str += "{0}({1}) ".format(FY(GIT_STATUS_RENAMED ),  len_renamed );
-        if(len_updated  ): status_str += "{0}({1}) ".format(FY(GIT_STATUS_UPDATED ),  len_updated );
-        if(len_untracked): status_str += "{0}({1}) ".format(BR(GIT_STATUS_UNTRACKED),  len_untracked );
-
-
-        repo_pretty_name = colorize_repo_name(git_repo);
-        output = "{0}/{1} {2}".format(
-            repo_pretty_name,
-            git_repo.current_branch.name,
-            status_str
-        );
-
-        print(output);
-
+        git_repo.print_result();
 
 main();
