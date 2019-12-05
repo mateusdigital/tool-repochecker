@@ -6,7 +6,7 @@ import shlex;
 import subprocess;
 from pathlib import Path;
 import pdb;
-import cowtermcolor;
+from cowtermcolor import *;
 
 GIT_STATUS_MODIFIED  = "M";
 GIT_STATUS_ADDED     = "A";
@@ -61,15 +61,15 @@ def is_current_branch(branch_name):
     return clean_name.startswith("*");
 
 
-def BR(a): return cowtermcolor.on_red(a) + cowtermcolor.reset();
+def BR(a): return colored(a, bg=ON_RED);
 
-def FR(a): return cowtermcolor.red(a) + cowtermcolor.reset();
-def FY(a): return cowtermcolor.yellow(a) + cowtermcolor.reset();
-def FG(a): return cowtermcolor.green(a) + cowtermcolor.reset();
+def FR(a): return colored(a, fg=RED);
+def FY(a): return colored(a, fg=YELLOW);
+def FG(a): return colored(a, fg=GREEN);
 
 
-def C_clean_repo(s): return cowtermcolor.green  (s) + cowtermcolor.reset();
-def C_dirty_repo(s): return cowtermcolor.magenta(s) + cowtermcolor.reset();
+def C_clean_repo(s): return colored(s, fg=GREEN  );
+def C_dirty_repo(s): return colored(s, fg=MAGENTA);
 
 def colorize_repo_name(git_repo):
     pretty_name = os.path.basename(git_repo.root_path);
@@ -79,10 +79,11 @@ def colorize_repo_name(git_repo):
         pretty_name = C_clean_repo(pretty_name);
 
     prefix = "[Submodule]" if git_repo.is_submodule else "[Repo]";
-    return "{0} {1}".format(prefix, pretty_name);
+    path = colored(git_repo.root_path, fg=GREY);
+    return "{0} {1} - ({2})".format(prefix, pretty_name, path);
 
 def colorize_branch_name(branch_name):
-    return cowtermcolor.cyan(branch_name) + cowtermcolor.reset();
+    return colored(branch_name, CYAN);
 
 tab_size = -1;
 def tab_indent():
