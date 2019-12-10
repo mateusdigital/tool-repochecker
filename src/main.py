@@ -8,6 +8,9 @@ from pathlib import Path;
 import pdb;
 from cowtermcolor import *;
 
+##----------------------------------------------------------------------------##
+## Constants                                                                  ##
+##----------------------------------------------------------------------------##
 GIT_STATUS_MODIFIED  = "M";
 GIT_STATUS_ADDED     = "A";
 GIT_STATUS_DELETED   = "D";
@@ -16,28 +19,72 @@ GIT_STATUS_COPIED    = "C";
 GIT_STATUS_UPDATED   = "U";
 GIT_STATUS_UNTRACKED = "??";
 
+
+##----------------------------------------------------------------------------##
+## Globals                                                                    ##
+##----------------------------------------------------------------------------##
 git_paths = [];
+tab_size = -1;
 
 
+##----------------------------------------------------------------------------##
+## Log Functions                                                              ##
+##----------------------------------------------------------------------------##
+##------------------------------------------------------------------------------
 def log_debug(fmt, *args):
     formatted = fmt.format(*args);
     print("[DEBUG] ", formatted);
 
+##------------------------------------------------------------------------------
 def log_error(fmt, *args):
     formatted = fmt.format(*args);
     print("[ERROR] ", formatted);
 
+##------------------------------------------------------------------------------
 def log_info(fmt, *args):
     # pdb.set_trace();
     formatted = fmt.format(*args);
     print(formatted);
 
+
+##----------------------------------------------------------------------------##
+## Print Functions                                                            ##
+##----------------------------------------------------------------------------##
+def tab_indent():
+    global tab_size;
+    tab_size += 1;
+
+##------------------------------------------------------------------------------
+def tab_unindent():
+    global tab_size;
+    tab_size -= 1;
+
+##------------------------------------------------------------------------------
+def tab_print(*args):
+    global tab_size;
+    tabs     = "";
+    args_str = str(*args);
+    if(tab_size > 0):
+        tabs = ("    " * tab_size);
+
+    print("{0}{1}".format(tabs, args_str));
+
+
+##----------------------------------------------------------------------------##
+## OS / Path Functions                                                        ##
+##----------------------------------------------------------------------------##
+##------------------------------------------------------------------------------
 def get_home_path():
     return os.path.abspath(os.path.expanduser("~"));
 
+##------------------------------------------------------------------------------
 def normalize_path(path):
     return os.path.abspath(os.path.normpath(os.path.normcase(path)));
 
+##----------------------------------------------------------------------------##
+## Git Functions                                                              ##
+##----------------------------------------------------------------------------##
+##------------------------------------------------------------------------------
 def git_exec(path, args):
     path           = normalize_path(path);
     cmd            = "git -C \"%s\" %s" % (path, args);
@@ -52,15 +99,20 @@ def git_exec(path, args):
 
     return output.decode('utf-8'), p.returncode;
 
-def clean_branch_name(branch_name):
+##------------------------------------------------------------------------------
+def git_clean_branch_name(branch_name):
     clean_name = branch_name.strip(" ").strip("*").strip(" ");
     return clean_name;
 
-def is_current_branch(branch_name):
+##------------------------------------------------------------------------------
+def git_is_current_branch(branch_name):
     clean_name = branch_name.strip(" ");
     return clean_name.startswith("*");
 
 
+##----------------------------------------------------------------------------##
+## Color Functions                                                            ##
+##----------------------------------------------------------------------------##
 def BR(a): return colored(a, bg=ON_RED);
 
 def FR(a): return colored(a, fg=RED);
@@ -79,34 +131,23 @@ def colorize_repo_name(git_repo):
         pretty_name = C_clean_repo(pretty_name);
 
     prefix = "[Submodule]" if git_repo.is_submodule else "[Repo]";
-    path = colored(git_repo.root_path, fg=GREY);
-    return "{0} {1} - ({2})".format(prefix, pretty_name, path);
+    path = colored(git_repo.root_path, bg=ON_GREY);
+    return "{0} {1} ".format(prefix, pretty_name, path);
 
 def colorize_branch_name(branch_name):
     return colored(branch_name, CYAN);
 
-tab_size = -1;
-def tab_indent():
-    global tab_size;
-    tab_size += 1;
 
-def tab_unindent():
-    global tab_size;
-    tab_size -= 1;
 
-def tab_print(*args):
-    global tab_size;
-    tabs     = "";
-    args_str = str(*args);
-    if(tab_size > 0):
-        tabs = ("...." * tab_size);
-
-    print("{0}{1}".format(tabs, args_str));
-
+##----------------------------------------------------------------------------##
+## Types                                                                      ##
+##----------------------------------------------------------------------------##
+##------------------------------------------------------------------------------
 class GitBranch:
+    ##--------------------------------------------------------------------------
     def __init__(self, branch_name, repo):
-        self.name       = clean_branch_name(branch_name);
-        self.is_current = is_current_branch(branch_name);
+        self.name       = git_clean_branch_name(branch_name);
+        self.is_current = git_is_current_branch(branch_name);
         self.repo       = repo;
 
         self.is_dirty  = False;
@@ -118,6 +159,7 @@ class GitBranch:
         self.updated   = [];
         self.untracked = [];
 
+    ##--------------------------------------------------------------------------
     def check_status(self):
         if(not self.is_current):
             return;
@@ -146,7 +188,10 @@ class GitBranch:
             elif(status == GIT_STATUS_UNTRACKED):
                 self.untracked.append(path);
 
+
+##------------------------------------------------------------------------------
 class GitRepo:
+    ##--------------------------------------------------------------------------
     def __init__(self, root_path, is_submodule = False):
         global git_paths;
         git_paths.append(normalize_path(root_path));
@@ -160,6 +205,7 @@ class GitRepo:
         self.submodules = [];
         self.find_submodules();
 
+    ##--------------------------------------------------------------------------
     def find_submodules(self):
         result, error_code = git_exec(
             self.root_path,
@@ -190,6 +236,7 @@ class GitRepo:
             git_repo = GitRepo(submodule_path, True);
             self.submodules.append(git_repo);
 
+    ##--------------------------------------------------------------------------
     def get_branches(self):
         result, error_code = git_exec(self.root_path, "branch");
         ## todo(stdmatt): error handling...
@@ -202,6 +249,7 @@ class GitRepo:
         for submodule in self.submodules:
             submodule.get_branches();
 
+    ##--------------------------------------------------------------------------
     def check_status(self):
         for branch in self.branches:
             branch.check_status();
@@ -211,6 +259,7 @@ class GitRepo:
         for submodule in self.submodules:
             submodule.check_status();
 
+    ##--------------------------------------------------------------------------
     def print_result(self):
         if(not self.is_dirty):
             return;
@@ -233,14 +282,13 @@ class GitRepo:
             len_untracked = len(branch.untracked );
 
             status_str = "";
-            if(len_added    ): status_str += "{0}({1}) ".format(FG(GIT_STATUS_ADDED   ),  len_added   );
-            if(len_copied   ): status_str += "{0}({1}) ".format(FG(GIT_STATUS_COPIED  ),  en_copied  );
-            if(len_deleted  ): status_str += "{0}({1}) ".format(FR(GIT_STATUS_DELETED ),  len_deleted );
-            if(len_modified ): status_str += "{0}({1}) ".format(FY(GIT_STATUS_MODIFIED),  len_modified);
-            if(len_renamed  ): status_str += "{0}({1}) ".format(FY(GIT_STATUS_RENAMED ),  len_renamed );
-            if(len_updated  ): status_str += "{0}({1}) ".format(FY(GIT_STATUS_UPDATED ),  len_updated );
+            if(len_added    ): status_str += "{0}({1}) ".format(FG(GIT_STATUS_ADDED    ),  len_added     );
+            if(len_copied   ): status_str += "{0}({1}) ".format(FG(GIT_STATUS_COPIED   ),  en_copied     );
+            if(len_deleted  ): status_str += "{0}({1}) ".format(FR(GIT_STATUS_DELETED  ),  len_deleted   );
+            if(len_modified ): status_str += "{0}({1}) ".format(FY(GIT_STATUS_MODIFIED ),  len_modified  );
+            if(len_renamed  ): status_str += "{0}({1}) ".format(FY(GIT_STATUS_RENAMED  ),  len_renamed   );
+            if(len_updated  ): status_str += "{0}({1}) ".format(FY(GIT_STATUS_UPDATED  ),  len_updated   );
             if(len_untracked): status_str += "{0}({1}) ".format(BR(GIT_STATUS_UNTRACKED),  len_untracked );
-
 
             if(len(status_str) == 0):
                 continue;
@@ -255,11 +303,14 @@ class GitRepo:
         tab_unindent();
 
 
+##----------------------------------------------------------------------------##
+## Entry Point                                                                ##
+##----------------------------------------------------------------------------##
 def main():
     global git_paths;
     start_path = os.path.join(
         get_home_path(),
-        "Documents/Projects/stdmatt/games"
+        "Documents/Projects/stdmatt"
     );
 
     ##
