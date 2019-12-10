@@ -159,11 +159,13 @@ class GitBranch:
         self.updated   = [];
         self.untracked = [];
 
+        self.diffs_to_pull = [];
+        self.diffs_to_push = [];
+
     ##--------------------------------------------------------------------------
     def check_status(self):
-        if(not self.is_current):
-            return;
-
+        ##
+        ## Find the local modifications.
         status_result, error_code = git_exec(self.repo.root_path, "status -s");
         ## @todo(stdmatt): error handling...
 
@@ -188,6 +190,39 @@ class GitBranch:
             elif(status == GIT_STATUS_UNTRACKED):
                 self.untracked.append(path);
 
+        ##
+        ## Find the differences to remote.
+        ## @TODO(stdmatt): I'm just checking for origin right now that's my
+        ## main use case... I need to understand better how to check for
+        ## other remotes as well.
+        remote_name = "origin";
+
+        # self.diffs_to_push = self.find_diffs_from_remote("{1}..{0}/{1}", remote_name);
+        # self.diffs_to_pull = self.find_diffs_from_remote("{0}/{1}..{1}", remote_name);
+
+        self.diffs_to_pull = self.find_diffs_from_remote("{1}..{0}/{1}", remote_name);
+        self.diffs_to_push = self.find_diffs_from_remote("{0}/{1}..{1}", remote_name);
+
+    ##--------------------------------------------------------------------------
+    def find_diffs_from_remote(self, fmt, remote_name):
+        fmt = fmt.format(remote_name, self.name);
+        status_result, error_code = git_exec(
+            self.repo.root_path,
+            "log {0} --oneline".format(fmt)
+        );
+
+        if(error_code != 0):
+            return [];
+
+        diffs = [];
+        for line in status_result.split("\n"):
+            line = line.strip();
+            if(len(line) == 0):
+                continue;
+
+            diffs.append(line);
+
+        return diffs;
 
 ##------------------------------------------------------------------------------
 class GitRepo:
@@ -237,7 +272,7 @@ class GitRepo:
             self.submodules.append(git_repo);
 
     ##--------------------------------------------------------------------------
-    def get_branches(self):
+    def find_branches(self):
         result, error_code = git_exec(self.root_path, "branch");
         ## todo(stdmatt): error handling...
         for branch_name in result.splitlines():
@@ -247,7 +282,7 @@ class GitRepo:
                 self.current_branch = branch;
 
         for submodule in self.submodules:
-            submodule.get_branches();
+            submodule.find_branches();
 
     ##--------------------------------------------------------------------------
     def check_status(self):
@@ -290,12 +325,32 @@ class GitRepo:
             if(len_updated  ): status_str += "{0}({1}) ".format(FY(GIT_STATUS_UPDATED  ),  len_updated   );
             if(len_untracked): status_str += "{0}({1}) ".format(BR(GIT_STATUS_UNTRACKED),  len_untracked );
 
-            if(len(status_str) == 0):
-                continue;
-
             branch_name = colorize_branch_name(branch.name);
             tab_indent();
             tab_print("{0} - {1}".format(branch_name, status_str));
+
+            tab_indent();
+            to_push = branch.diffs_to_push;
+            tab_print("To Push: ({0})".format(len(to_push)));
+
+            tab_indent();
+            for line in to_push:
+                tab_print("[{0}]".format(line));
+            tab_unindent();
+
+            tab_unindent(); ## to push
+
+            tab_indent();
+            to_pull = branch.diffs_to_pull;
+            tab_print("To Pull: ({0})".format(len(to_pull)));
+
+            tab_indent();
+            for line in to_pull:
+                tab_print(line);
+            tab_unindent();
+            tab_unindent(); ## to push
+
+
             tab_unindent();
 
         for submodule in self.submodules:
@@ -310,8 +365,10 @@ def main():
     global git_paths;
     start_path = os.path.join(
         get_home_path(),
-        "Documents/Projects/stdmatt"
+        # "Documents/Projects/stdmatt"
+        "Documents/Projects/stdmatt/games"
     );
+    # start_path = "..";
 
     ##
     ## Discover the repositories.
@@ -336,7 +393,7 @@ def main():
         log_debug("Updating Repositiory ({0} of {1})", i+1, len(git_repos));
 
         git_repo = git_repos[i];
-        git_repo.get_branches();
+        git_repo.find_branches();
         git_repo.check_status();
 
         if(git_repo.is_dirty):
