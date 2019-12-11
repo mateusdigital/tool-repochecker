@@ -23,8 +23,9 @@ GIT_STATUS_UNTRACKED = "??";
 ##----------------------------------------------------------------------------##
 ## Globals                                                                    ##
 ##----------------------------------------------------------------------------##
-git_paths = [];
-tab_size = -1;
+class Globals:
+    git_paths = [];
+    tab_size = -1;
 
 
 ##----------------------------------------------------------------------------##
@@ -51,21 +52,18 @@ def log_info(fmt, *args):
 ## Print Functions                                                            ##
 ##----------------------------------------------------------------------------##
 def tab_indent():
-    global tab_size;
-    tab_size += 1;
+    Globals.tab_size += 1;
 
 ##------------------------------------------------------------------------------
 def tab_unindent():
-    global tab_size;
-    tab_size -= 1;
+    Globals.tab_size -= 1;
 
 ##------------------------------------------------------------------------------
 def tab_print(*args):
-    global tab_size;
     tabs     = "";
     args_str = str(*args);
     if(tab_size > 0):
-        tabs = ("    " * tab_size);
+        tabs = ("    " * Globals.tab_size);
 
     print("{0}{1}".format(tabs, args_str));
 
@@ -228,8 +226,7 @@ class GitBranch:
 class GitRepo:
     ##--------------------------------------------------------------------------
     def __init__(self, root_path, is_submodule = False):
-        global git_paths;
-        git_paths.append(normalize_path(root_path));
+        Globals.git_paths.append(normalize_path(root_path));
 
         self.root_path      = root_path;
         self.is_submodule   = is_submodule;
@@ -362,7 +359,6 @@ class GitRepo:
 ## Entry Point                                                                ##
 ##----------------------------------------------------------------------------##
 def main():
-    global git_paths;
     start_path = os.path.join(
         get_home_path(),
         # "Documents/Projects/stdmatt"
@@ -376,7 +372,7 @@ def main():
     for git_path in Path(start_path).rglob(".git"):
         git_root_path = normalize_path(os.path.dirname(git_path));
 
-        if(git_root_path in git_paths):
+        if(git_root_path in Globals.git_paths):
             log_debug("Path is a submodule - Path: ({0})", git_root_path);
             continue;
 
