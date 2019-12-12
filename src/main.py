@@ -6,6 +6,7 @@ import shlex;
 import subprocess;
 import sys;
 import pdb;
+import getopt;
 
 from pathlib import Path;
 
@@ -27,8 +28,10 @@ GIT_STATUS_UNTRACKED = "??";
 ##----------------------------------------------------------------------------##
 class Globals:
     color_enabled = True;
+    is_debug      = False;
     git_paths     = [];
     tab_size      = -1;
+
 
 
 ##----------------------------------------------------------------------------##
@@ -65,6 +68,9 @@ def colorize_branch_name(branch_name):
 ##----------------------------------------------------------------------------##
 ##------------------------------------------------------------------------------
 def log_debug(fmt, *args):
+    if(not Globals.is_debug):
+        return;
+
     formatted = fmt.format(*args);
     print("[DEBUG] ", formatted);
 
@@ -362,10 +368,18 @@ class GitRepo:
 ## Entry Point                                                                ##
 ##----------------------------------------------------------------------------##
 def main():
-    args = sys.argv[1:];
+    try:
+        opts, args = getopt.gnu_getopt(sys.argv[1:],"",["debug", "no-colors"]);
+    except getopt.GetoptError:
+        sys.exit(2);
+
     start_path = ".";
     if(len(args) > 0):
         start_path = args[0];
+
+    for opt, arg in opts:
+        if(opt == "debug"    ): Globals.is_debug      = True;
+        if(opt == "no-colors"): Globals.color_enabled = False;
 
     ##
     ## Discover the repositories.
