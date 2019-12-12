@@ -4,9 +4,11 @@ import os.path;
 import glob;
 import shlex;
 import subprocess;
-from pathlib import Path;
+import sys;
 import pdb;
-from cowtermcolor import *;
+
+from pathlib import Path;
+
 
 ##----------------------------------------------------------------------------##
 ## Constants                                                                  ##
@@ -24,8 +26,38 @@ GIT_STATUS_UNTRACKED = "??";
 ## Globals                                                                    ##
 ##----------------------------------------------------------------------------##
 class Globals:
-    git_paths = [];
-    tab_size = -1;
+    color_enabled = True;
+    git_paths     = [];
+    tab_size      = -1;
+
+
+##----------------------------------------------------------------------------##
+## Color Functions                                                            ##
+##----------------------------------------------------------------------------##
+def BR(text): return text;
+
+def FR(text): return text;
+def FC(text): return text;
+def FG(text): return text;
+def FB(text): return text;
+def FM(text): return text;
+def FY(text): return text;
+
+def colorize_repo_name(git_repo):
+    pretty_name = os.path.basename(git_repo.root_path);
+    if(git_repo.is_dirty):
+        pretty_name = FG(pretty_name);
+    else:
+        pretty_name = FM(pretty_name);
+
+    prefix = "[Submodule]" if git_repo.is_submodule else "[Repo]";
+    path   = git_repo.root_path;
+
+    return "{0} {1} ".format(prefix, pretty_name, path);
+
+def colorize_branch_name(branch_name):
+    return FC(branch_name);
+
 
 
 ##----------------------------------------------------------------------------##
@@ -62,7 +94,7 @@ def tab_unindent():
 def tab_print(*args):
     tabs     = "";
     args_str = str(*args);
-    if(tab_size > 0):
+    if(Globals.tab_size > 0):
         tabs = ("    " * Globals.tab_size);
 
     print("{0}{1}".format(tabs, args_str));
@@ -106,35 +138,6 @@ def git_clean_branch_name(branch_name):
 def git_is_current_branch(branch_name):
     clean_name = branch_name.strip(" ");
     return clean_name.startswith("*");
-
-
-##----------------------------------------------------------------------------##
-## Color Functions                                                            ##
-##----------------------------------------------------------------------------##
-def BR(a): return colored(a, bg=ON_RED);
-
-def FR(a): return colored(a, fg=RED);
-def FY(a): return colored(a, fg=YELLOW);
-def FG(a): return colored(a, fg=GREEN);
-
-
-def C_clean_repo(s): return colored(s, fg=GREEN  );
-def C_dirty_repo(s): return colored(s, fg=MAGENTA);
-
-def colorize_repo_name(git_repo):
-    pretty_name = os.path.basename(git_repo.root_path);
-    if(git_repo.is_dirty):
-        pretty_name = C_dirty_repo(pretty_name);
-    else:
-        pretty_name = C_clean_repo(pretty_name);
-
-    prefix = "[Submodule]" if git_repo.is_submodule else "[Repo]";
-    path = colored(git_repo.root_path, bg=ON_GREY);
-    return "{0} {1} ".format(prefix, pretty_name, path);
-
-def colorize_branch_name(branch_name):
-    return colored(branch_name, CYAN);
-
 
 
 ##----------------------------------------------------------------------------##
@@ -359,12 +362,10 @@ class GitRepo:
 ## Entry Point                                                                ##
 ##----------------------------------------------------------------------------##
 def main():
-    start_path = os.path.join(
-        get_home_path(),
-        # "Documents/Projects/stdmatt"
-        "Documents/Projects/stdmatt/games"
-    );
-    # start_path = "..";
+    args = sys.argv[1:];
+    start_path = ".";
+    if(len(args) > 0):
+        start_path = args[0];
 
     ##
     ## Discover the repositories.
