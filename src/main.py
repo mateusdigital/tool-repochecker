@@ -74,6 +74,13 @@ def log_debug(fmt, *args):
     formatted = fmt.format(*args);
     print("[DEBUG] ", formatted);
 
+def log_debug_error(fmt, *args):
+    if(not Globals.is_debug):
+        return;
+
+    formatted = fmt.format(*args);
+    print("[DEBUG-ERROR] ", formatted);
+
 ##------------------------------------------------------------------------------
 def log_error(fmt, *args):
     formatted = fmt.format(*args);
@@ -129,8 +136,9 @@ def git_exec(path, args):
 
     p = subprocess.Popen(cmd_components, stdout=subprocess.PIPE, stderr=subprocess.PIPE);
     output, errors = p.communicate();
+
     if(p.returncode):
-        log_error("Failed running {0}", cmd);
+        log_debug_error("Failed running {0}", cmd);
         return "", p.returncode;
 
     return output.decode('utf-8'), p.returncode;
@@ -378,8 +386,8 @@ def main():
         start_path = args[0];
 
     for opt, arg in opts:
-        if(opt == "debug"    ): Globals.is_debug      = True;
-        if(opt == "no-colors"): Globals.color_enabled = False;
+        if(opt == "--debug"    ): Globals.is_debug      = True;
+        if(opt == "--no-colors"): Globals.color_enabled = False;
 
     ##
     ## Discover the repositories.
