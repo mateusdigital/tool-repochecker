@@ -40,7 +40,6 @@ class Globals:
     tab_size      = -1;
 
 
-
 ##----------------------------------------------------------------------------##
 ## Color Functions                                                            ##
 ##----------------------------------------------------------------------------##
@@ -468,16 +467,20 @@ def main():
     ##
     ## Update the Repositories.
     log_info("Found {0} repos...", len(git_repos));
+
     repos_to_show = [];
     for i in range(0, len(git_repos)):
-        log_debug("Updating Repositiory ({0} of {1})", i+1, len(git_repos));
+        log_debug("Updating Repository ({0} of {1})", i+1, len(git_repos));
 
         git_repo = git_repos[i];
 
+        git_repo.update_remotes();
         git_repo.find_branches();
         git_repo.check_status();
 
-        git_repo.print_result()
+    for i in range(0, len(git_repos)):
+        git_repo = git_repos[i];
+        git_repo.print_result();
 
 
 if(__name__ == "__main__"):
