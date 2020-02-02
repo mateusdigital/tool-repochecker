@@ -29,9 +29,10 @@ GIT_STATUS_UNTRACKED = "??";
 class Globals:
     ##
     ## Command Line Args.
-    color_enabled = True;
-    is_debug      = False;
-    start_path    = "";
+    color_enabled  = True;
+    is_debug       = False;
+    start_path     = "";
+    update_remotes = False;
 
     ##
     ## Housekeeping
@@ -234,6 +235,9 @@ class GitBranch:
         self.diffs_to_pull = self.find_diffs_from_remote("{1}..{0}/{1}", remote_name);
         self.diffs_to_push = self.find_diffs_from_remote("{0}/{1}..{1}", remote_name);
 
+        if(len(self.diffs_to_pull) != 0 or len(self.diffs_to_push) != 0):
+            self.is_dirty = True;
+
     ##--------------------------------------------------------------------------
     def find_diffs_from_remote(self, fmt, remote_name):
         fmt = fmt.format(remote_name, self.name);
@@ -267,14 +271,21 @@ class GitRepo:
             "Submodule" if is_submodule else "Repo"
         );
 
+        self.name           = os.path.basename(root_path);
         self.root_path      = root_path;
         self.is_submodule   = is_submodule;
         self.branches       = [];
         self.current_branch = None;
         self.is_dirty       = False;
+        self.submodules     = [];
 
-        self.submodules = [];
         self.find_submodules();
+
+    ##--------------------------------------------------------------------------
+    def update_remotes(self):
+        if(Globals.update_remotes):
+            log_debug("Updating remotes...");
+            git_exec(self.root_path, "remote update")
 
     ##--------------------------------------------------------------------------
     def find_submodules(self):
@@ -399,19 +410,32 @@ class GitRepo:
 
 def parse_args():
     parser = argparse.ArgumentParser(description="git repository checker");
+    ## Debug.
     parser.add_argument(
         "--debug",
         dest="is_debug",
         action="store_true",
         default=False
     );
+    ## Colors.
     parser.add_argument(
         "--no-colors",
         dest="color_enabled",
         action="store_false",
         default=True
     );
-    parser.add_argument("path", default=os.getcwd());
+    ## Update Remotes.
+    parser.add_argument(
+        "--remote",
+        dest="update_remote",
+        action="store_true",
+        default=False
+    );
+    ## Start Path.
+    parser.add_argument(
+        "path",
+        default=os.getcwd()
+    );
 
     return parser.parse_args();
 
@@ -423,10 +447,12 @@ def main():
     ## Parse the command line arguments.
     args = parse_args();
 
-    Globals.is_debug      = args.is_debug;
-    Globals.color_enabled = args.color_enabled
-    Globals.start_path    = normalize_path(args.path);
-    ## Globals.start_path = "/Users/stdmatt/Documents/Projects/stdmatt/personal/my_computer_tidy_and_clean";
+    Globals.is_debug       = args.is_debug;
+    Globals.color_enabled  = args.color_enabled
+    Globals.start_path     = normalize_path(args.path);
+    Globals.update_remotes = args.update_remote;
+
+    ## Globals.start_path = "/Users/stdmatt/Documents/Projects/stdmatt/demos/startfield"
     ##
     ## Discover the repositories.
     git_repos = [];
