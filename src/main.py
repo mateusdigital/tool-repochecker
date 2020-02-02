@@ -6,7 +6,7 @@ import shlex;
 import subprocess;
 import sys;
 import pdb;
-import getopt;
+import argparse;
 
 from pathlib import Path;
 
@@ -27,9 +27,15 @@ GIT_STATUS_UNTRACKED = "??";
 ## Globals                                                                    ##
 ##----------------------------------------------------------------------------##
 class Globals:
+    ##
+    ## Command Line Args.
     color_enabled = True;
     is_debug      = False;
-    git_paths     = [];
+    start_path    = "";
+
+    ##
+    ## Housekeeping
+    already_searched_git_path     = [];
     tab_size      = -1;
 
 
@@ -92,6 +98,13 @@ def log_info(fmt, *args):
     formatted = fmt.format(*args);
     print(formatted);
 
+def log_fatal(fmt, *args):
+    if(len(args) != 0):
+        formatted = fmt.format(*args);
+    else:
+        formatted = fmt;
+    print(formatted);
+    exit(1);
 
 ##----------------------------------------------------------------------------##
 ## Print Functions                                                            ##
@@ -122,7 +135,11 @@ def get_home_path():
 
 ##------------------------------------------------------------------------------
 def normalize_path(path):
-    return os.path.abspath(os.path.normpath(os.path.normcase(path)));
+    path = os.path.expanduser(path);
+    path = os.path.normcase(path);
+    path = os.path.normpath(path);
+    path = os.path.abspath(path);
+    return path;
 
 ##----------------------------------------------------------------------------##
 ## Git Functions                                                              ##
@@ -138,7 +155,7 @@ def git_exec(path, args):
     output, errors = p.communicate();
 
     if(p.returncode):
-        log_debug_error("Failed running {0}", cmd);
+        ## log_debug_error("Failed running {0}", cmd);
         return "", p.returncode;
 
     return output.decode('utf-8'), p.returncode;
@@ -181,10 +198,12 @@ class GitBranch:
     def check_status(self):
         ##
         ## Find the local modifications.
-        status_result, error_code = git_exec(self.repo.root_path, "status -s");
+        status_result, error_code = git_exec(self.repo.root_path, "status -suno");
         ## @todo(stdmatt): error handling...
-
         for line in status_result.split("\n"):
+            if(len(line) == 0 or not self.is_current):
+                continue;
+
             self.is_dirty = True;
 
             status = line[0:2].strip(" ");
@@ -211,9 +230,6 @@ class GitBranch:
         ## main use case... I need to understand better how to check for
         ## other remotes as well.
         remote_name = "origin";
-
-        # self.diffs_to_push = self.find_diffs_from_remote("{1}..{0}/{1}", remote_name);
-        # self.diffs_to_pull = self.find_diffs_from_remote("{0}/{1}..{1}", remote_name);
 
         self.diffs_to_pull = self.find_diffs_from_remote("{1}..{0}/{1}", remote_name);
         self.diffs_to_push = self.find_diffs_from_remote("{0}/{1}..{1}", remote_name);
@@ -242,8 +258,14 @@ class GitBranch:
 ##------------------------------------------------------------------------------
 class GitRepo:
     ##--------------------------------------------------------------------------
-    def __init__(self, root_path, is_submodule = False):
-        Globals.git_paths.append(normalize_path(root_path));
+    def __init__(self, root_path, is_submodule=False):
+        Globals.already_searched_git_path.append(normalize_path(root_path));
+        log_debug(
+            "Found {2} Path:({0}) - Submodule: ({1})",
+            root_path,
+            is_submodule,
+            "Submodule" if is_submodule else "Repo"
+        );
 
         self.root_path      = root_path;
         self.is_submodule   = is_submodule;
@@ -274,7 +296,15 @@ class GitRepo:
             submodule_path = os.path.join(self.root_path, submodule_path);
 
             if(not os.path.isdir(submodule_path)):
-                pdb.set_trace();
+                msg = "\n".join([
+                    "While scanning repository submodules"
+                    , "repochecker found a submodule entry that doesn't correspond to a valid path."
+                    , "Repository Path        : {0}"
+                    , "Submodule Entry        : {1}"
+                    , "Submodule Invalid Path : {2}"
+                ]);
+                msg = msg.format(self.root_path, line, submodule_path);
+                log_fatal(msg);
 
             log_debug(
                 "Found submodule of ({0}) at ({1})",
@@ -322,87 +352,92 @@ class GitRepo:
             if(branch is None):
                 pdb.set_trace();
 
-            len_modified  = len(branch.modified  );
-            len_added     = len(branch.added     );
-            len_deleted   = len(branch.deleted   );
-            len_renamed   = len(branch.renamed   );
-            len_copied    = len(branch.copied    );
-            len_updated   = len(branch.updated   );
-            len_untracked = len(branch.untracked );
+            def _concat_status_str(diff, color_func, msg):
+                if (len(diff) == 0):
+                    return "";
+                return "{0}({1})".format(color_func(msg), len(diff));
+
+            def _print_branch_name(branch_name, status_str):
+                branch_name = colorize_branch_name(branch_name);
+                if(len(status_str) != 0):
+                    tab_print("{0} - {1}".format(branch_name, status_str));
+                else:
+                    tab_print("{0}".format(branch_name));
+
+            def _print_push_pull_info(diff, msg):
+                if(len(diff) == 0):
+                    return;
+
+                tab_indent();
+                tab_print("{0}: {1}".format(msg, len(diff)));
+
+                for line in diff:
+                    tab_indent();
+                    tab_print("[{0}]".format(line));
+                    tab_unindent();
+
+                tab_unindent();
 
             status_str = "";
-            if(len_added    ): status_str += "{0}({1}) ".format(FG(GIT_STATUS_ADDED    ),  len_added     );
-            if(len_copied   ): status_str += "{0}({1}) ".format(FG(GIT_STATUS_COPIED   ),  en_copied     );
-            if(len_deleted  ): status_str += "{0}({1}) ".format(FR(GIT_STATUS_DELETED  ),  len_deleted   );
-            if(len_modified ): status_str += "{0}({1}) ".format(FY(GIT_STATUS_MODIFIED ),  len_modified  );
-            if(len_renamed  ): status_str += "{0}({1}) ".format(FY(GIT_STATUS_RENAMED  ),  len_renamed   );
-            if(len_updated  ): status_str += "{0}({1}) ".format(FY(GIT_STATUS_UPDATED  ),  len_updated   );
-            if(len_untracked): status_str += "{0}({1}) ".format(BR(GIT_STATUS_UNTRACKED),  len_untracked );
-
-            branch_name = colorize_branch_name(branch.name);
-            tab_indent();
-            tab_print("{0} - {1}".format(branch_name, status_str));
+            status_str += _concat_status_str(branch.modified, FG, GIT_STATUS_MODIFIED);
+            status_str += _concat_status_str(branch.added, FG, GIT_STATUS_ADDED);
+            status_str += _concat_status_str(branch.deleted, FR, GIT_STATUS_DELETED);
+            status_str += _concat_status_str(branch.renamed, FY, GIT_STATUS_RENAMED);
+            status_str += _concat_status_str(branch.copied, FY, GIT_STATUS_COPIED);
+            status_str += _concat_status_str(branch.updated, FY, GIT_STATUS_UPDATED);
+            status_str += _concat_status_str(branch.untracked, BR, GIT_STATUS_UNTRACKED);
 
             tab_indent();
-            to_push = branch.diffs_to_push;
-            tab_print("To Push: ({0})".format(len(to_push)));
-
-            tab_indent();
-            for line in to_push:
-                tab_print("[{0}]".format(line));
-            tab_unindent();
-
-            tab_unindent(); ## to push
-
-            tab_indent();
-            to_pull = branch.diffs_to_pull;
-            tab_print("To Pull: ({0})".format(len(to_pull)));
-
-            tab_indent();
-            for line in to_pull:
-                tab_print(line);
-            tab_unindent();
-            tab_unindent(); ## to push
-
-
+            _print_branch_name(branch.name, status_str);
+            _print_push_pull_info(branch.diffs_to_push, "To Push");
+            _print_push_pull_info(branch.diffs_to_pull, "To Pull");
             tab_unindent();
 
         for submodule in self.submodules:
             submodule.print_result();
         tab_unindent();
 
+def parse_args():
+    parser = argparse.ArgumentParser(description="git repository checker");
+    parser.add_argument(
+        "--debug",
+        dest="is_debug",
+        action="store_true",
+        default=False
+    );
+    parser.add_argument(
+        "--no-colors",
+        dest="color_enabled",
+        action="store_false",
+        default=True
+    );
+    parser.add_argument("path", default=os.getcwd());
+
+    return parser.parse_args();
 
 ##----------------------------------------------------------------------------##
 ## Entry Point                                                                ##
 ##----------------------------------------------------------------------------##
 def main():
-    try:
-        opts, args = getopt.gnu_getopt(sys.argv[1:],"",["debug", "no-colors"]);
-    except getopt.GetoptError:
-        sys.exit(2);
+    ##
+    ## Parse the command line arguments.
+    args = parse_args();
 
-    start_path = ".";
-    if(len(args) > 0):
-        start_path = args[0];
-
-    for opt, arg in opts:
-        if(opt == "--debug"    ): Globals.is_debug      = True;
-        if(opt == "--no-colors"): Globals.color_enabled = False;
-
+    Globals.is_debug      = args.is_debug;
+    Globals.color_enabled = args.color_enabled
+    Globals.start_path    = normalize_path(args.path);
+    ## Globals.start_path = "/Users/stdmatt/Documents/Projects/stdmatt/personal/my_computer_tidy_and_clean";
     ##
     ## Discover the repositories.
     git_repos = [];
-    for git_path in Path(start_path).rglob(".git"):
+    for git_path in Path(Globals.start_path).rglob(".git"):
         git_root_path = normalize_path(os.path.dirname(git_path));
-
-        if(git_root_path in Globals.git_paths):
-            log_debug("Path is a submodule - Path: ({0})", git_root_path);
+        if(git_root_path in Globals.already_searched_git_path):
+            log_debug("Path is already visited- Path: ({0})", git_root_path);
             continue;
 
-        log_debug("Found repository at ({0})", git_root_path);
         git_repo = GitRepo(git_root_path);
         git_repos.append(git_repo);
-
 
     ##
     ## Update the Repositories.
@@ -412,16 +447,12 @@ def main():
         log_debug("Updating Repositiory ({0} of {1})", i+1, len(git_repos));
 
         git_repo = git_repos[i];
+
         git_repo.find_branches();
         git_repo.check_status();
 
-        if(git_repo.is_dirty):
-            repos_to_show.append(git_repo);
+        git_repo.print_result()
 
-    ##
-    ## Show the results.
-    log_info("Results of ({0}) repos...", len(repos_to_show));
-    for git_repo in repos_to_show:
-        git_repo.print_result();
 
-main();
+if("__name__" == __main__):
+    main();
