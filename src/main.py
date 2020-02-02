@@ -454,5 +454,5 @@ def main():
         git_repo.print_result()
 
 
-if("__name__" == __main__):
+if(__name__ == "__main__"):
     main();
