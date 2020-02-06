@@ -47,28 +47,31 @@ from .cowtermcolor import *;
 
 class Colors(object):
     def __init__(self):
-        self._br = Color(bg=ON_RED);
-        self._fr = Color(fg=RED);
-        self._fc = Color(fg=CYAN);
-        self._fg = Color(fg=GREEN);
-        self._fb = Color(fg=BLUE);
-        self._fm = Color(fg=MAGENTA);
-        self._fy = Color(fg=YELLOW);
+        ColorMode.mode = ColorMode.ALWAYS;
+
+        self._bred = Color(bg=ON_RED);
+        self._fred = Color(fg=RED);
+        self._fgreen = Color(fg=GREEN);
+        self._fgray = Color(fg=BRIGHT_BLACK);
+        self._fyellow = Color(fg=YELLOW);
+        self._fcyan = Color(fg=CYAN);
+        self._fwhite = Color(fg=WHITE);
+
 
 _Color = Colors();
 
-def BR(text): return _Color._br(text);
-def FR(text): return _Color._fr(text);
-def FC(text): return _Color._fc(text);
-def FG(text): return _Color._fg(text);
-def FB(text): return _Color._fb(text);
-def FM(text): return _Color._fm(text);
-def FY(text): return _Color._fy(text);
+def BRed   (text): return _Color._bred   (text);
+def FRed   (text): return _Color._fred   (text);
+def FGreen (text): return _Color._fgreen (text);
+def FGray  (text): return _Color._fgray  (text);
+def FYellow(text): return _Color._fyellow(text);
+def FCyan  (text): return _Color._fcyan  (text);
+def FWhite (text): return _Color._fwhite (text);
 
 def colorize_repo_name(git_repo):
     pretty_name = os.path.basename(git_repo.root_path);
     if(git_repo.is_dirty):
-        pretty_name = FG(pretty_name);
+        pretty_name = FGreen(pretty_name);
     else:
         pretty_name = FM(pretty_name);
 
@@ -76,10 +79,6 @@ def colorize_repo_name(git_repo):
     path   = git_repo.root_path;
 
     return "{0} {1} ".format(prefix, pretty_name, path);
-
-def colorize_branch_name(branch_name):
-    return FC(branch_name);
-
 
 
 ##----------------------------------------------------------------------------##
@@ -372,16 +371,19 @@ class GitRepo:
         tab_print(repo_pretty_name);
 
         for branch in self.branches:
+            if(not branch.is_dirty):
+                continue;
+
             if(branch is None):
                 pdb.set_trace();
 
             def _concat_status_str(diff, color_func, msg):
                 if (len(diff) == 0):
                     return "";
-                return "{0}({1})".format(color_func(msg), len(diff));
+                return "{0}({1}) ".format(color_func(msg), color_func(len(diff)));
 
             def _print_branch_name(branch_name, status_str):
-                branch_name = colorize_branch_name(branch_name);
+                branch_name = FGray(branch_name);
                 if(len(status_str) != 0):
                     tab_print("{0} - {1}".format(branch_name, status_str));
                 else:
@@ -392,28 +394,41 @@ class GitRepo:
                     return;
 
                 tab_indent();
-                tab_print("{0}: {1}".format(msg, len(diff)));
+                tab_print("{0}: ({1})".format(msg, FCyan(len(diff))));
 
                 for line in diff:
                     tab_indent();
-                    tab_print("[{0}]".format(line));
+
+                    components = line.split(" ");
+                    sha = FRed(components[0]);
+                    msg = FWhite(" ".join(components[1:]));
+
+                    tab_print("[{0} {1}]".format(sha, msg));
                     tab_unindent();
 
                 tab_unindent();
 
             status_str = "";
-            status_str += _concat_status_str(branch.modified, FG, GIT_STATUS_MODIFIED);
-            status_str += _concat_status_str(branch.added, FG, GIT_STATUS_ADDED);
-            status_str += _concat_status_str(branch.deleted, FR, GIT_STATUS_DELETED);
-            status_str += _concat_status_str(branch.renamed, FY, GIT_STATUS_RENAMED);
-            status_str += _concat_status_str(branch.copied, FY, GIT_STATUS_COPIED);
-            status_str += _concat_status_str(branch.updated, FY, GIT_STATUS_UPDATED);
-            status_str += _concat_status_str(branch.untracked, BR, GIT_STATUS_UNTRACKED);
+            # branch.modified = [1,1,2,]
+            # branch.added = [1,1,2,]
+            # branch.deleted = [1,1,2,]
+            # branch.renamed = [1, 3 , 4 ]
+            # branch.copied = [1,1,2,]
+            # branch.updated =[1,1,2,]
+            # branch.untracked = [1,1,2,]
+
+            status_str += _concat_status_str(branch.modified, FYellow, GIT_STATUS_MODIFIED);
+            status_str += _concat_status_str(branch.added, FGreen, GIT_STATUS_ADDED);
+            status_str += _concat_status_str(branch.deleted, FRed, GIT_STATUS_DELETED);
+            status_str += _concat_status_str(branch.renamed, FYellow, GIT_STATUS_RENAMED);
+            status_str += _concat_status_str(branch.copied, FYellow, GIT_STATUS_COPIED);
+            status_str += _concat_status_str(branch.updated, FYellow, GIT_STATUS_UPDATED);
+            status_str += _concat_status_str(branch.untracked, BRed, GIT_STATUS_UNTRACKED);
 
             tab_indent();
             _print_branch_name(branch.name, status_str);
-            _print_push_pull_info(branch.diffs_to_push, "To Push");
-            _print_push_pull_info(branch.diffs_to_pull, "To Pull");
+            _print_push_pull_info(branch.diffs_to_push, FGreen("To Push"));
+            _print_push_pull_info(branch.diffs_to_pull, FYellow("To Pull"));
             tab_unindent();
 
         for submodule in self.submodules:
