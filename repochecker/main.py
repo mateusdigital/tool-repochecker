@@ -36,21 +36,34 @@ class Globals:
 
     ##
     ## Housekeeping
-    already_searched_git_path     = [];
-    tab_size      = -1;
+    already_searched_git_path = [];
+    tab_size                  = -1;
 
 
 ##----------------------------------------------------------------------------##
 ## Color Functions                                                            ##
 ##----------------------------------------------------------------------------##
-def BR(text): return text;
+from .cowtermcolor import *;
 
-def FR(text): return text;
-def FC(text): return text;
-def FG(text): return text;
-def FB(text): return text;
-def FM(text): return text;
-def FY(text): return text;
+class Colors(object):
+    def __init__(self):
+        self._br = Color(bg=ON_RED);
+        self._fr = Color(fg=RED);
+        self._fc = Color(fg=CYAN);
+        self._fg = Color(fg=GREEN);
+        self._fb = Color(fg=BLUE);
+        self._fm = Color(fg=MAGENTA);
+        self._fy = Color(fg=YELLOW);
+
+_Color = Colors();
+
+def BR(text): return _Color._br(text);
+def FR(text): return _Color._fr(text);
+def FC(text): return _Color._fc(text);
+def FG(text): return _Color._fg(text);
+def FB(text): return _Color._fb(text);
+def FM(text): return _Color._fm(text);
+def FY(text): return _Color._fy(text);
 
 def colorize_repo_name(git_repo):
     pretty_name = os.path.basename(git_repo.root_path);
@@ -482,6 +495,3 @@ def main():
         git_repo = git_repos[i];
         git_repo.print_result();
 
-
-if(__name__ == "__main__"):
-    main();
