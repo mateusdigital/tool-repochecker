@@ -4,3 +4,4 @@ dist/
 build/
 repochecker.egg-info
 *.pyc
+.vscode/
