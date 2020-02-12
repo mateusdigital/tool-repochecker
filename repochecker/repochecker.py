@@ -16,7 +16,7 @@ from pathlib import Path;
 ##----------------------------------------------------------------------------##
 GIT_STATUS_MODIFIED  = "M";
 GIT_STATUS_ADDED     = "A";
-GIT_STATUS_DELETED   = "D";
+GIT_STATUS_DELETED   = "D"
 GIT_STATUS_RENAMED   = "R";
 GIT_STATUS_COPIED    = "C";
 GIT_STATUS_UPDATED   = "U";
@@ -33,9 +33,10 @@ class Globals:
     is_debug       = False;
     start_path     = "";
     update_remotes = False;
+    auto_pull      = False;
 
     ##
-    ## Housekeeping
+    ## Housekeeping.
     already_searched_git_path = [];
     tab_size                  = -1;
 
@@ -70,7 +71,7 @@ def FWhite (text): return _Color._fwhite (text);
 
 def colorize_repo_name(git_repo):
     pretty_name = os.path.basename(git_repo.root_path);
-    if(git_repo.is_dirty):
+    if(git_repo.is_dirty()):
         pretty_name = FGreen(pretty_name);
     else:
         pretty_name = FM(pretty_name);
@@ -194,7 +195,6 @@ class GitBranch:
         self.is_current = git_is_current_branch(branch_name);
         self.repo       = repo;
 
-        self.is_dirty  = False;
         self.modified  = [];
         self.added     = [];
         self.deleted   = [];
@@ -206,6 +206,18 @@ class GitBranch:
         self.diffs_to_pull = [];
         self.diffs_to_push = [];
 
+    def is_dirty(self):
+        return self.is_local_dirty() or self.is_remote_dirty();
+
+    def is_local_dirty(self):
+        return len(self.modified ) != 0 or len(self.added    ) != 0 or \
+               len(self.deleted  ) != 0 or len(self.renamed  ) != 0 or \
+               len(self.copied   ) != 0 or len(self.updated  ) != 0 or \
+               len(self.untracked) != 0;
+
+    def is_remote_dirty(self):
+        return len(self.diffs_to_pull) != 0 or len(self.diffs_to_push) != 0
+
     ##--------------------------------------------------------------------------
     def check_status(self):
         ##
@@ -215,8 +227,6 @@ class GitBranch:
         for line in status_result.split("\n"):
             if(len(line) == 0 or not self.is_current):
                 continue;
-
-            self.is_dirty = True;
 
             path     = line[2: ].strip(" ");
             status   = line[0:2].strip(" ");
@@ -247,8 +257,50 @@ class GitBranch:
         self.diffs_to_pull = self.find_diffs_from_remote("{1}..{0}/{1}", remote_name);
         self.diffs_to_push = self.find_diffs_from_remote("{0}/{1}..{1}", remote_name);
 
-        if(len(self.diffs_to_pull) != 0 or len(self.diffs_to_push) != 0):
-            self.is_dirty = True;
+
+    ##--------------------------------------------------------------------------
+    def try_to_pull(self):
+        color_repo_name   = FGreen(self.repo.name);
+        color_branch_name = FCyan(self.name);
+        if(not self.is_current):
+            log_error(
+                "{0}/{1} is not the current branch and will not be auto pulled",
+                color_repo_name,
+                color_branch_name
+            );
+
+        if(self.is_local_dirty()):
+            log_info(
+                "{0}/{1} is dirty and will not be auto pulled",
+                color_repo_name,
+                color_branch_name
+            );
+            return;
+
+        if(len(self.diffs_to_pull) == 0):
+            return;
+
+        log_info("{0}/{1} is being auto pulled", color_repo_name, color_branch_name);
+
+        output, return_code = git_exec(self.repo.root_path, "pull origin {0}".format(self.name))
+        if(return_code != 0):
+            log_error(
+                "{0}/{1} had an error on auto pull!!\nError: {2}\n\nRolling back...",
+                color_repo_name,
+                color_branch_name,
+                output
+            );
+
+            output, return_code = git_exec(self.repo.root_path, "reset --merge");
+            if(return_code != 0):
+                log_fatal(
+                    "{0}/{1} had an error when rolling back\nError: {2}",
+                    color_repo_name,
+                    color_branch_name,
+                    output
+                );
+
+        self.diffs_to_pull = [];
 
     ##--------------------------------------------------------------------------
     def find_diffs_from_remote(self, fmt, remote_name):
@@ -288,10 +340,20 @@ class GitRepo:
         self.is_submodule   = is_submodule;
         self.branches       = [];
         self.current_branch = None;
-        self.is_dirty       = False;
         self.submodules     = [];
 
         self.find_submodules();
+
+    def is_dirty(self):
+        for branch in self.branches:
+            if(branch.is_dirty()):
+                return True;
+
+        for submodule in self.submodules:
+            if(submodule.is_dirty()):
+                return True;
+
+        return False;
 
     ##--------------------------------------------------------------------------
     def update_remotes(self):
@@ -355,15 +417,19 @@ class GitRepo:
     def check_status(self):
         for branch in self.branches:
             branch.check_status();
-            if(branch.is_dirty):
-                self.is_dirty = True;
 
         for submodule in self.submodules:
             submodule.check_status();
 
     ##--------------------------------------------------------------------------
+    def try_to_pull(self):
+        ## @NOTICE(stdmatt): Right now we're just pulling the current branch
+        ## we need to research how to pull different branches...
+        self.current_branch.try_to_pull();
+
+    ##--------------------------------------------------------------------------
     def print_result(self):
-        if(not self.is_dirty):
+        if(not self.is_dirty()):
             return;
 
         tab_indent();
@@ -372,7 +438,7 @@ class GitRepo:
         tab_print(repo_pretty_name);
 
         for branch in self.branches:
-            if(not branch.is_dirty):
+            if(not branch.is_dirty()):
                 continue;
 
             if(branch is None):
@@ -459,6 +525,13 @@ def parse_args():
         action="store_true",
         default=False
     );
+    ## Auto Pull.
+    parser.add_argument(
+        "--auto-pull",
+        dest="auto_pull",
+        action="store_true",
+        default=False
+    )
     ## Start Path.
     parser.add_argument(
         "path",
@@ -480,6 +553,7 @@ def run():
     Globals.color_enabled  = args.color_enabled
     Globals.start_path     = normalize_path(args.path);
     Globals.update_remotes = args.update_remote;
+    Globals.auto_pull      = args.auto_pull;
 
     ## Globals.start_path = "/Users/stdmatt/Documents/Projects/stdmatt/demos/startfield"
     ##
@@ -498,7 +572,6 @@ def run():
     ## Update the Repositories.
     log_info("Found {0} repos...", len(git_repos));
 
-    repos_to_show = [];
     for i in range(0, len(git_repos)):
         log_debug("Updating Repository ({0} of {1})", i+1, len(git_repos));
 
@@ -508,6 +581,11 @@ def run():
         git_repo.find_branches();
         git_repo.check_status();
 
+        if(Globals.auto_pull):
+            git_repo.try_to_pull();
+
+    ##
+    ## Present Repositories.
     for i in range(0, len(git_repos)):
         git_repo = git_repos[i];
         git_repo.print_result();
