@@ -1,3 +1,4 @@
+from .repochecker import *
+
 if(__name__ == "__main__"):
-    from .main import *
-    main();
+    run();

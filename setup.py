@@ -21,7 +21,7 @@ setuptools.setup(
     ],
     entry_points={
         "console_scripts": [
-            "repochecker = repochecker.main:main"
+            "repochecker = repochecker.repochecker:run"
         ],
     },
 )

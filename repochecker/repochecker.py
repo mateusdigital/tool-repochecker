@@ -218,22 +218,23 @@ class GitBranch:
 
             self.is_dirty = True;
 
-            status = line[0:2].strip(" ");
-            path   = line[2: ].strip(" ");
+            path     = line[2: ].strip(" ");
+            status   = line[0:2].strip(" ");
+            status_x = status[0];
 
-            if(status == GIT_STATUS_MODIFIED):
+            if(status_x == GIT_STATUS_MODIFIED):
                 self.modified.append(path);
-            elif(status == GIT_STATUS_ADDED):
+            elif(status_x == GIT_STATUS_ADDED):
                 self.added.append(path);
-            elif(status == GIT_STATUS_DELETED):
+            elif(status_x == GIT_STATUS_DELETED):
                 self.deleted.append(path);
-            elif(status == GIT_STATUS_RENAMED):
+            elif(status_x == GIT_STATUS_RENAMED):
                 self.renamed.append(path);
-            elif(status == GIT_STATUS_COPIED):
+            elif(status_x == GIT_STATUS_COPIED):
                 self.copied.append(path);
-            elif(status == GIT_STATUS_UPDATED):
+            elif(status_x == GIT_STATUS_UPDATED):
                 self.updated.append(path);
-            elif(status == GIT_STATUS_UNTRACKED):
+            elif(status_x == GIT_STATUS_UNTRACKED):
                 self.untracked.append(path);
 
         ##
@@ -461,7 +462,8 @@ def parse_args():
     ## Start Path.
     parser.add_argument(
         "path",
-        default=os.getcwd()
+        default=os.getcwd(),
+        nargs="?"
     );
 
     return parser.parse_args();
@@ -469,7 +471,7 @@ def parse_args():
 ##----------------------------------------------------------------------------##
 ## Entry Point                                                                ##
 ##----------------------------------------------------------------------------##
-def main():
+def run():
     ##
     ## Parse the command line arguments.
     args = parse_args();
