@@ -168,8 +168,8 @@ def git_exec(path, args):
     output, errors = p.communicate();
 
     if(p.returncode):
-        ## log_debug_error("Failed running {0}", cmd);
-        return "", p.returncode;
+        log_debug_error("Failed running {0}", cmd);
+        return errors.decode('utf-8'), p.returncode;
 
     return output.decode('utf-8'), p.returncode;
 
@@ -423,6 +423,13 @@ class GitRepo:
 
     ##--------------------------------------------------------------------------
     def try_to_pull(self):
+        if(self.current_branch is None):
+            log_debug(
+                "Repo ({0}) doesn't have a current branch",
+                 self.root_path
+            );
+            return;
+
         ## @NOTICE(stdmatt): Right now we're just pulling the current branch
         ## we need to research how to pull different branches...
         self.current_branch.try_to_pull();
