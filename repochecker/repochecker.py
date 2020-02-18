@@ -29,12 +29,12 @@ GIT_STATUS_UNTRACKED = "??";
 class Globals:
     ##
     ## Command Line Args.
-    color_enabled  = True;
-    is_debug       = False;
-    start_path     = "";
-    update_remotes = False;
-    auto_pull      = False;
-
+    color_enabled                 = True;
+    is_debug                      = False;
+    start_path                    = "";
+    update_remotes                = False;
+    auto_pull                     = False;
+    delete_merged_remote_branches = False;
     ##
     ## Housekeeping.
     already_searched_git_path = [];
@@ -50,13 +50,13 @@ class Colors(object):
     def __init__(self):
         ColorMode.mode = ColorMode.ALWAYS;
 
-        self._bred = Color(bg=ON_RED);
-        self._fred = Color(fg=RED);
-        self._fgreen = Color(fg=GREEN);
-        self._fgray = Color(fg=BRIGHT_BLACK);
+        self._bred    = Color(bg=ON_RED);
+        self._fred    = Color(fg=RED);
+        self._fgreen  = Color(fg=GREEN);
+        self._fgray   = Color(fg=BRIGHT_BLACK);
         self._fyellow = Color(fg=YELLOW);
-        self._fcyan = Color(fg=CYAN);
-        self._fwhite = Color(fg=WHITE);
+        self._fcyan   = Color(fg=CYAN);
+        self._fwhite  = Color(fg=WHITE);
 
 
 _Color = Colors();
@@ -93,6 +93,7 @@ def log_debug(fmt, *args):
     formatted = fmt.format(*args);
     print("[DEBUG] ", formatted);
 
+##------------------------------------------------------------------------------
 def log_debug_error(fmt, *args):
     if(not Globals.is_debug):
         return;
@@ -111,6 +112,7 @@ def log_info(fmt, *args):
     formatted = fmt.format(*args);
     print(formatted);
 
+##------------------------------------------------------------------------------
 def log_fatal(fmt, *args):
     if(len(args) != 0):
         formatted = fmt.format(*args);
@@ -206,15 +208,18 @@ class GitBranch:
         self.diffs_to_pull = [];
         self.diffs_to_push = [];
 
+    ##--------------------------------------------------------------------------
     def is_dirty(self):
         return self.is_local_dirty() or self.is_remote_dirty();
 
+    ##---------------------------------------------------------------------------
     def is_local_dirty(self):
         return len(self.modified ) != 0 or len(self.added    ) != 0 or \
                len(self.deleted  ) != 0 or len(self.renamed  ) != 0 or \
                len(self.copied   ) != 0 or len(self.updated  ) != 0 or \
                len(self.untracked) != 0;
 
+    ##---------------------------------------------------------------------------
     def is_remote_dirty(self):
         return len(self.diffs_to_pull) != 0 or len(self.diffs_to_push) != 0
 
@@ -256,7 +261,6 @@ class GitBranch:
 
         self.diffs_to_pull = self.find_diffs_from_remote("{1}..{0}/{1}", remote_name);
         self.diffs_to_push = self.find_diffs_from_remote("{0}/{1}..{1}", remote_name);
-
 
     ##--------------------------------------------------------------------------
     def try_to_pull(self):
@@ -322,6 +326,10 @@ class GitBranch:
             diffs.append(line);
 
         return diffs;
+
+    ##--------------------------------------------------------------------------
+    ##def delete_merged_branches_in_remote(self):
+
 
 ##------------------------------------------------------------------------------
 class GitRepo:
