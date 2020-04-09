@@ -48,7 +48,6 @@ GIT_STATUS_UNTRACKED = "??";
 class Globals:
     ##
     ## Command Line Args.
-    color_enabled  = True;
     is_debug       = False;
     start_path     = "";
     update_remotes = False;
@@ -60,18 +59,20 @@ class Globals:
     tab_size                  = -1;
 
 
-def colorize_repo_name(git_repo):
-    pretty_name = os.path.basename(git_repo.root_path);
-    if(git_repo.is_dirty()):
-        pretty_name = colors.repo_clean(pretty_name);
-    else:
-        pretty_name = colors.repo_dirty(pretty_name);
 
-    prefix = "[Submodule]" if git_repo.is_submodule else "[Repo]";
-    path   = git_repo.root_path;
+##----------------------------------------------------------------------------##
+## Log Functions                                                              ##
+##----------------------------------------------------------------------------##
+def get_help_str():
+    return "help";
 
-    return "{0} {1} ".format(prefix, pretty_name, path);
+def show_help():
+    print(get_help_str());
+    exit(0);
 
+def show_version():
+    print("version");
+    exit(0);
 
 ##----------------------------------------------------------------------------##
 ## Log Functions                                                              ##
@@ -112,6 +113,7 @@ def log_fatal(fmt, *args):
 
     print(colors.red("[FATAL]"), formatted);
     exit(1);
+
 
 ##----------------------------------------------------------------------------##
 ## Print Functions                                                            ##
@@ -504,36 +506,23 @@ class GitRepo:
             submodule.print_result();
         tab_unindent();
 
+##------------------------------------------------------------------------------
 def parse_args():
-    parser = argparse.ArgumentParser(description="git repository checker");
-    ## Debug.
-    parser.add_argument(
-        "--debug",
-        dest="is_debug",
-        action="store_true",
-        default=False
+    parser = argparse.ArgumentParser(
+        description="git repository checker",
+        usage=get_help_str(),
+        add_help=False
     );
-    ## Colors.
-    parser.add_argument(
-        "--no-colors",
-        dest="color_enabled",
-        action="store_false",
-        default=True
-    );
-    ## Update Remotes.
-    parser.add_argument(
-        "--remote",
-        dest="update_remote",
-        action="store_true",
-        default=False
-    );
-    ## Auto Pull.
-    parser.add_argument(
-        "--auto-pull",
-        dest="auto_pull",
-        action="store_true",
-        default=False
-    )
+
+    parser.add_argument("--help",    dest="show_help",    action="store_true", default=False);
+    parser.add_argument("--version", dest="show_version", action="store_true", default=False);
+
+    parser.add_argument("--debug",     dest="is_debug",      action="store_true",  default=False);
+    parser.add_argument("--no-colors", dest="color_enabled", action="store_false", default=True);
+
+    parser.add_argument("--remote",    dest="update_remote", action="store_true", default=False);
+    parser.add_argument("--auto-pull", dest="auto_pull",     action="store_true", default=False);
+
     ## Start Path.
     parser.add_argument(
         "path",
@@ -543,6 +532,7 @@ def parse_args():
 
     return parser.parse_args();
 
+
 ##----------------------------------------------------------------------------##
 ## Entry Point                                                                ##
 ##----------------------------------------------------------------------------##
@@ -551,8 +541,17 @@ def run():
     ## Parse the command line arguments.
     args = parse_args();
 
+    ## Help / Version.
+    if(args.show_help):
+        show_help();
+    if(args.show_version):
+        show_version();
+
+    ## Disable coloring.
+    if(not args.color_enabled):
+        colors.disable_coloring();
+
     Globals.is_debug       = args.is_debug or False;
-    Globals.color_enabled  = args.color_enabled
     Globals.start_path     = normalize_path(args.path);
     Globals.update_remotes = args.update_remote;
     Globals.auto_pull      = args.auto_pull;

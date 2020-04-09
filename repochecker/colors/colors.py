@@ -19,6 +19,10 @@ from mcow_py_termcolor import termcolor;
 
 termcolor.color_mode = termcolor.COLOR_MODE_ALWAYS;
 
+def disable_coloring():
+    termcolor.color_mode = termcolor.COLOR_MODE_NEVER;
+
+
 def green (s): return termcolor.colored(s, termcolor.GREEN);
 def red   (s): return termcolor.colored(s, termcolor.RED  );
 def blue  (s): return termcolor.colored(s, termcolor.BLUE );
@@ -49,3 +53,16 @@ def pulling_branch_name(s): return termcolor.colored(s, termcolor.CYAN);
 
 def commit_sha(s): return red  (s);
 def commit_msg(s): return white(s);
+
+
+def colorize_repo_name(git_repo):
+    pretty_name = os.path.basename(git_repo.root_path);
+    if(git_repo.is_dirty()):
+        pretty_name = colors.repo_clean(pretty_name);
+    else:
+        pretty_name = colors.repo_dirty(pretty_name);
+
+    prefix = "[Submodule]" if git_repo.is_submodule else "[Repo]";
+    path   = git_repo.root_path;
+
+    return "{0} {1} ".format(prefix, pretty_name, path);
