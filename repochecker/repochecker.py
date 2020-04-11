@@ -53,7 +53,7 @@ GIT_STATUS_UNTRACKED = "??";
 
 PROGRAM_NAME      = "repochecker";
 PROGRAM_COPYRIGHT =  2020;
-
+NL = "\n";
 
 ##----------------------------------------------------------------------------##
 ## Globals                                                                    ##
@@ -66,9 +66,10 @@ class Globals:
 
     submodules = False;
 
-    is_debug  = False;
-    show_push = False;
-    show_pull = False;
+    is_debug   = False;
+    show_push  = False;
+    show_pull  = False;
+    show_short = False;
 
     start_path = "";
 
@@ -87,7 +88,8 @@ def get_help_str():
   {program_name} [--debug] [--no-colors]
   {program_name} [--remote] [--auto-pull]
   {program_name} [--submodules]
-  {program_name} [--show-push] [--show-pull]
+  {program_name} [--show-push] [--show-pull] [--show-all]
+  {program_name} [--short]
   {program_name} <start-path>
 
 Options:
@@ -174,13 +176,16 @@ def tab_unindent():
     Globals.tab_size -= 1;
 
 ##------------------------------------------------------------------------------
-def tab_print(*args):
-    tabs     = "";
-    args_str = str(*args);
-    if(Globals.tab_size > 0):
-        tabs = ("    " * Globals.tab_size);
+def tabs():
+    spacing_size = 2;
+    spacing_char = ".";
+    spacing      = spacing_char * spacing_size;
+    ret          = "";
 
-    print("{0}{1}".format(tabs, args_str));
+
+    if(Globals.tab_size > 0):
+        ret = (spacing * Globals.tab_size);
+    return ret;
 
 
 ##----------------------------------------------------------------------------##
@@ -489,84 +494,123 @@ class GitRepo:
         for submodule in self.submodules:
             submodule.try_to_pull()
 
-    ##--------------------------------------------------------------------------
+    ##------------------------------------------------------------------------------
+    def _build_status_str(self, branch):
+        def _concat_status_str(diff, color_func, msg):
+            if (len(diff) == 0):
+                return "";
+            return "{0}({1}) ".format(color_func(msg), color_func(len(diff)));
+
+        status_str = "";
+        status_str += _concat_status_str(branch.modified  , colors.branch_modified  ,  GIT_STATUS_MODIFIED );
+        status_str += _concat_status_str(branch.added     , colors.branch_added     ,  GIT_STATUS_ADDED    );
+        status_str += _concat_status_str(branch.deleted   , colors.branch_deleted   ,  GIT_STATUS_DELETED  );
+        status_str += _concat_status_str(branch.renamed   , colors.branch_renamed   ,  GIT_STATUS_RENAMED  );
+        status_str += _concat_status_str(branch.copied    , colors.branch_copied    ,  GIT_STATUS_COPIED   );
+        status_str += _concat_status_str(branch.updated   , colors.branch_updated   ,  GIT_STATUS_UPDATED  );
+        status_str += _concat_status_str(branch.untracked , colors.branch_untracked ,  GIT_STATUS_UNTRACKED);
+        status_str = status_str.rstrip();
+
+        status_str = " - {0}".format(status_str) if len(status_str) != 0 else "";
+        return status_str;
+
+    ##------------------------------------------------------------------------------
+    def _build_diffs_str(self, branch):
+        ##
+        if(Globals.show_short):
+            result = "";
+            if(Globals.show_pull and len(branch.diffs_to_pull) != 0):
+                result += " - {0}:({1})".format(
+                    colors.diffs_to_pull("To Pull"),
+                    colors.number(len(branch.diffs_to_pull))
+                );
+
+            if(Globals.show_push and len(branch.diffs_to_push) != 0):
+                result += " - {0}:({1})".format(
+                    colors.diffs_to_pull("To Push"),
+                    colors.number(len(branch.diffs_to_push))
+                );
+            return result;
+
+        ##
+        ## Long output.
+        def _concat_diff(diff):
+            if(len(diff) == 0 or Globals.show_short):
+                return "";
+
+            output_str = "";
+            tab_indent();
+            for line in diff:
+                components = line.split(" ");
+                sha = colors.commit_sha(components[0]);
+                msg = colors.commit_msg(" ".join(components[1:]));
+
+                output_str += tabs() + "[{0} {1}]".format(sha, msg) + NL;
+            tab_unindent();
+
+            return output_str;
+
+        tab_indent();
+        result = NL;
+
+        tab_indent();
+        if(Globals.show_pull and len(branch.diffs_to_pull) != 0):
+            result += tabs() + "{0}:({1})\n".format(
+                colors.diffs_to_pull("To Pull"),
+                colors.number(len(branch.diffs_to_pull))
+            );
+            result += _concat_diff(branch.diffs_to_pull);
+
+        if(Globals.show_push and len(branch.diffs_to_push) != 0):
+            result += tabs() + "{0}:({1})\n".format(
+                colors.diffs_to_push("To Push"),
+                colors.number(len(branch.diffs_to_push))
+            );
+            result += _concat_diff(branch.diffs_to_push);
+        tab_unindent();
+
+        tab_unindent();
+        return result.rstrip(NL);
+
+    ##------------------------------------------------------------------------------
     def print_result(self):
         if(not self.is_dirty()):
             return;
 
+        output_str = "";
         tab_indent();
 
-        repo_pretty_name = colors.colorize_repo_name(self);
-        tab_print(repo_pretty_name);
+        ##
+        ## Repo name.
+        print(tabs() + output_str + colors.colorize_repo_name(self));
 
+        ##
+        ## Branches.
         for branch in self.branches:
             if(not branch.is_dirty()):
                 continue;
 
+            ## @notice(stdmatt): Something went very, very, very wrong...
             if(branch is None):
                 pdb.set_trace();
 
-            def _concat_status_str(diff, color_func, msg):
-                if (len(diff) == 0):
-                    return "";
-                return "{0}({1}) ".format(color_func(msg), color_func(len(diff)));
-
-            def _print_branch_name(branch_name, status_str):
-                branch_name = colors.branch_name(branch_name);
-                if(len(status_str) != 0):
-                    tab_print("{0} - {1}".format(branch_name, status_str));
-                else:
-                    tab_print("{0}".format(branch_name));
-
-            def _print_push_pull_info(diff, msg):
-                if(len(diff) == 0):
-                    return;
-
-                tab_indent();
-                tab_print("{0}: ({1})".format(msg, colors.number(len(diff))));
-
-                for line in diff:
-                    tab_indent();
-
-                    components = line.split(" ");
-                    sha = colors.commit_sha(components[0]);
-                    msg = colors.commit_msg(" ".join(components[1:]));
-
-                    tab_print("[{0} {1}]".format(sha, msg));
-                    tab_unindent();
-
-                tab_unindent();
-
-            status_str = "";
-            # branch.modified = [1,1,2,]
-            # branch.added = [1,1,2,]
-            # branch.deleted = [1,1,2,]
-            # branch.renamed = [1, 3 , 4 ]
-            # branch.copied = [1,1,2,]
-            # branch.updated =[1,1,2,]
-            # branch.untracked = [1,1,2,]
-
-            status_str += _concat_status_str(branch.modified  , colors.branch_modified  ,  GIT_STATUS_MODIFIED );
-            status_str += _concat_status_str(branch.added     , colors.branch_added     ,  GIT_STATUS_ADDED    );
-            status_str += _concat_status_str(branch.deleted   , colors.branch_deleted   ,  GIT_STATUS_DELETED  );
-            status_str += _concat_status_str(branch.renamed   , colors.branch_renamed   ,  GIT_STATUS_RENAMED  );
-            status_str += _concat_status_str(branch.copied    , colors.branch_copied    ,  GIT_STATUS_COPIED   );
-            status_str += _concat_status_str(branch.updated   , colors.branch_updated   ,  GIT_STATUS_UPDATED  );
-            status_str += _concat_status_str(branch.untracked , colors.branch_untracked ,  GIT_STATUS_UNTRACKED);
+            branch_name = colors.branch_name(branch.name);
+            status_str  = self._build_status_str(branch);
+            diffs_str   = self._build_diffs_str (branch);
 
             tab_indent();
-            _print_branch_name(branch.name, status_str);
-
-            if(Globals.show_push):
-                _print_push_pull_info(branch.diffs_to_push, colors.diffs_to_push("To Push"));
-            if(Globals.show_pull):
-                _print_push_pull_info(branch.diffs_to_pull, colors.diffs_to_pull("To Pull"));
-
+            output_str = tabs() + branch_name + status_str + diffs_str;
+            print(output_str);
             tab_unindent();
 
+        ##
+        ## Submodules.
         for submodule in self.submodules:
             submodule.print_result();
         tab_unindent();
+
+        if(not self.is_submodule):
+            print();
 
 ##------------------------------------------------------------------------------
 def parse_args():
@@ -593,7 +637,7 @@ def parse_args():
     parser.add_argument("--show-push", dest="show_push",     action="store_true",  default=False);
     parser.add_argument("--show-pull", dest="show_pull",     action="store_true",  default=False);
     parser.add_argument("--show-all",  dest="show_all",      action="store_true",  default=False);
-
+    parser.add_argument("--short",     dest="show_short",    action="store_true",  default=False);
 
     ## Start Path.
     parser.add_argument(
@@ -630,15 +674,18 @@ def run():
     if(not args.color_enabled):
         colors.disable_coloring();
 
-    Globals.is_debug  = args.is_debug or True;
+    Globals.is_debug  = args.is_debug;
     Globals.show_pull = args.show_pull;
     Globals.show_push = args.show_push;
     if(args.show_all):
         Globals.show_pull = True;
         Globals.show_push = True;
 
+    Globals.show_short = args.show_short;
+
+    ## Path.
     Globals.start_path = normalize_path(args.path);
-    Globals.start_path = normalize_path("~/Documents/Projects/stdmatt/personal/license_header")
+    Globals.start_path = normalize_path("~/Documents/Projects/stdmatt/")
 
     ##
     ## Discover the repositories.
