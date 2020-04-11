@@ -33,7 +33,7 @@ from .colors import colors
 ##----------------------------------------------------------------------------##
 ## Info                                                                       ##
 ##----------------------------------------------------------------------------##
-__version__   = "0.0.0";
+__version__   = "1.0.0";
 __author__    = "stdmatt - <stdmatt@pixelwizards.io>";
 __date__      = "Apr 09, 2020";
 __copyright__ = "Copyright 2020 - stdmatt";
@@ -178,10 +178,9 @@ def tab_unindent():
 ##------------------------------------------------------------------------------
 def tabs():
     spacing_size = 2;
-    spacing_char = ".";
+    spacing_char = " ";
     spacing      = spacing_char * spacing_size;
     ret          = "";
-
 
     if(Globals.tab_size > 0):
         ret = (spacing * Globals.tab_size);
@@ -609,7 +608,7 @@ class GitRepo:
             submodule.print_result();
         tab_unindent();
 
-        if(not self.is_submodule):
+        if(not self.is_submodule and not Globals.show_short):
             print();
 
 ##------------------------------------------------------------------------------
@@ -685,7 +684,6 @@ def run():
 
     ## Path.
     Globals.start_path = normalize_path(args.path);
-    Globals.start_path = normalize_path("~/Documents/Projects/stdmatt/")
 
     ##
     ## Discover the repositories.
@@ -698,7 +696,6 @@ def run():
         git_repos.append(git_repo);
 
         del dirs[0:];
-
 
     ##
     ## Update the Repositories.

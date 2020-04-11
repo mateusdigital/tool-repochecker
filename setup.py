@@ -20,7 +20,7 @@ import setuptools
 
 setuptools.setup(
     name="repochecker",
-    version="0.0.1",
+    version="1.0.0",
     description="Git repository checkekr",
     keywords="git",
     author="stdmatt",
