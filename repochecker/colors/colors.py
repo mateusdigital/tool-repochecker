@@ -61,9 +61,9 @@ def commit_msg(s): return white(s);
 def colorize_repo_name(git_repo):
     pretty_name = os.path.basename(git_repo.root_path);
     if(git_repo.is_dirty()):
-        pretty_name = repo_clean(pretty_name);
-    else:
         pretty_name = repo_dirty(pretty_name);
+    else:
+        pretty_name = repo_clean(pretty_name);
 
     prefix = "[Submodule]" if git_repo.is_submodule else "[Repo]";
     path   = git_repo.root_path;
