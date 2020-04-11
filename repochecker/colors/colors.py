@@ -15,7 +15,9 @@
 ##  Description :                                                             ##
 ##                                                                            ##
 ##---------------------------------------------------------------------------~##
+import os;
 from mcow_py_termcolor import termcolor;
+
 
 termcolor.color_mode = termcolor.COLOR_MODE_ALWAYS;
 
@@ -30,6 +32,7 @@ def yellow(s): return termcolor.colored(s, termcolor.YELLOW)
 def white (s): return termcolor.colored(s, termcolor.WHITE)
 
 def number(n): return termcolor.colored(n, termcolor.CYAN);
+def path  (p): return termcolor.colored(p, termcolor.MAGENTA);
 
 def repo_clean(name): return green(name);
 def repo_dirty(name): return red  (name);
@@ -58,9 +61,9 @@ def commit_msg(s): return white(s);
 def colorize_repo_name(git_repo):
     pretty_name = os.path.basename(git_repo.root_path);
     if(git_repo.is_dirty()):
-        pretty_name = colors.repo_clean(pretty_name);
+        pretty_name = repo_clean(pretty_name);
     else:
-        pretty_name = colors.repo_dirty(pretty_name);
+        pretty_name = repo_dirty(pretty_name);
 
     prefix = "[Submodule]" if git_repo.is_submodule else "[Repo]";
     path   = git_repo.root_path;
