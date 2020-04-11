@@ -592,6 +592,7 @@ def parse_args():
     parser.add_argument("--no-colors", dest="color_enabled", action="store_false", default=True );
     parser.add_argument("--show-push", dest="show_push",     action="store_true",  default=False);
     parser.add_argument("--show-pull", dest="show_pull",     action="store_true",  default=False);
+    parser.add_argument("--show-all",  dest="show_all",      action="store_true",  default=False);
 
 
     ## Start Path.
@@ -632,6 +633,9 @@ def run():
     Globals.is_debug  = args.is_debug or True;
     Globals.show_pull = args.show_pull;
     Globals.show_push = args.show_push;
+    if(args.show_all):
+        Globals.show_pull = True;
+        Globals.show_push = True;
 
     Globals.start_path = normalize_path(args.path);
     Globals.start_path = normalize_path("~/Documents/Projects/stdmatt/personal/license_header")
