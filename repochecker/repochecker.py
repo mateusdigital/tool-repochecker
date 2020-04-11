@@ -61,19 +61,20 @@ PROGRAM_COPYRIGHT =  2020;
 class Globals:
     ##
     ## Command Line Args.
-    is_debug = False;
-
     update_remotes = False;
     auto_pull      = False;
 
-    ignore_submodules = False;
+    submodules = False;
+
+    is_debug  = False;
+    show_push = False;
+    show_pull = False;
 
     start_path = "";
 
     ##
     ## Housekeeping.
-    already_searched_git_path = [];
-    tab_size                  = -1;
+    tab_size = -1;
 
 
 ##----------------------------------------------------------------------------##
@@ -85,6 +86,8 @@ def get_help_str():
   {program_name} [--help] [--version]
   {program_name} [--debug] [--no-colors]
   {program_name} [--remote] [--auto-pull]
+  {program_name} [--submodules]
+  {program_name} [--show-push] [--show-pull]
   {program_name} <start-path>
 
 Options:
@@ -258,36 +261,38 @@ class GitBranch:
                len(self.untracked) != 0;
 
     def is_remote_dirty(self):
-        return len(self.diffs_to_pull) != 0 or len(self.diffs_to_push) != 0
+        return (len(self.diffs_to_pull) != 0 and Globals.show_pull) \
+            or (len(self.diffs_to_push) != 0 and Globals.show_push);
 
     ##--------------------------------------------------------------------------
     def check_status(self):
         ##
         ## Find the local modifications.
-        status_result, error_code = git_exec(self.repo.root_path, "status -suno");
-        ## @todo(stdmatt): error handling...
-        for line in status_result.split("\n"):
-            if(len(line) == 0 or not self.is_current):
-                continue;
+        if(self.is_current):
+            status_result, error_code = git_exec(self.repo.root_path, "status -suno");
+            ## @todo(stdmatt): error handling...
+            for line in status_result.split("\n"):
+                if(len(line) == 0 or not self.is_current):
+                    continue;
 
-            path     = line[2: ].strip(" ");
-            status   = line[0:2].strip(" ");
-            status_x = status[0];
+                path     = line[2: ].strip(" ");
+                status   = line[0:2].strip(" ");
+                status_x = status[0];
 
-            if(status_x == GIT_STATUS_MODIFIED):
-                self.modified.append(path);
-            elif(status_x == GIT_STATUS_ADDED):
-                self.added.append(path);
-            elif(status_x == GIT_STATUS_DELETED):
-                self.deleted.append(path);
-            elif(status_x == GIT_STATUS_RENAMED):
-                self.renamed.append(path);
-            elif(status_x == GIT_STATUS_COPIED):
-                self.copied.append(path);
-            elif(status_x == GIT_STATUS_UPDATED):
-                self.updated.append(path);
-            elif(status_x == GIT_STATUS_UNTRACKED):
-                self.untracked.append(path);
+                if(status_x == GIT_STATUS_MODIFIED):
+                    self.modified.append(path);
+                elif(status_x == GIT_STATUS_ADDED):
+                    self.added.append(path);
+                elif(status_x == GIT_STATUS_DELETED):
+                    self.deleted.append(path);
+                elif(status_x == GIT_STATUS_RENAMED):
+                    self.renamed.append(path);
+                elif(status_x == GIT_STATUS_COPIED):
+                    self.copied.append(path);
+                elif(status_x == GIT_STATUS_UPDATED):
+                    self.updated.append(path);
+                elif(status_x == GIT_STATUS_UNTRACKED):
+                    self.untracked.append(path);
 
         ##
         ## Find the differences to remote.
@@ -370,7 +375,6 @@ class GitBranch:
 class GitRepo:
     ##--------------------------------------------------------------------------
     def __init__(self, root_path, is_submodule=False):
-        Globals.already_searched_git_path.append(normalize_path(root_path));
         log_debug(
             "Found {2} Path:({0}) - Submodule: ({1})",
             colors.path(root_path),
@@ -385,7 +389,7 @@ class GitRepo:
         self.current_branch = None;
         self.submodules     = [];
 
-        if(not Globals.ignore_submodules):
+        if(Globals.submodules):
             self.find_submodules();
 
     ##--------------------------------------------------------------------------
@@ -552,8 +556,12 @@ class GitRepo:
 
             tab_indent();
             _print_branch_name(branch.name, status_str);
-            _print_push_pull_info(branch.diffs_to_push, colors.diffs_to_push("To Push"));
-            _print_push_pull_info(branch.diffs_to_pull, colors.diffs_to_pull("To Pull"));
+
+            if(Globals.show_push):
+                _print_push_pull_info(branch.diffs_to_push, colors.diffs_to_push("To Push"));
+            if(Globals.show_pull):
+                _print_push_pull_info(branch.diffs_to_pull, colors.diffs_to_pull("To Pull"));
+
             tab_unindent();
 
         for submodule in self.submodules:
@@ -568,16 +576,22 @@ def parse_args():
         add_help=False
     );
 
+    ## Help / Version.
     parser.add_argument("--help",    dest="show_help",    action="store_true", default=False);
     parser.add_argument("--version", dest="show_version", action="store_true", default=False);
 
-    parser.add_argument("--debug",     dest="is_debug",      action="store_true",  default=False);
-    parser.add_argument("--no-colors", dest="color_enabled", action="store_false", default=True);
-
+    ## Remote.
     parser.add_argument("--remote",    dest="update_remote", action="store_true", default=False);
     parser.add_argument("--auto-pull", dest="auto_pull",     action="store_true", default=False);
 
-    parser.add_argument("--ignore-submodules", dest="ignore_subs", action="store_true", default=False);
+    ## Submodules.
+    parser.add_argument("--submodules", dest="submodules", action="store_true", default=False);
+
+    ## Output.
+    parser.add_argument("--debug",     dest="is_debug",      action="store_true",  default=False);
+    parser.add_argument("--no-colors", dest="color_enabled", action="store_false", default=True );
+    parser.add_argument("--show-push", dest="show_push",     action="store_true",  default=False);
+    parser.add_argument("--show-pull", dest="show_pull",     action="store_true",  default=False);
 
 
     ## Start Path.
@@ -604,33 +618,27 @@ def run():
     if(args.show_version):
         show_version();
 
-    ## Disable coloring.
+    ## Remote.
+    Globals.update_remotes = args.update_remote;
+    Globals.auto_pull      = args.auto_pull;
+
+    ## Submodules.
+    Globals.submodules = args.submodules;
+
+    ## Output
     if(not args.color_enabled):
         colors.disable_coloring();
 
-    Globals.is_debug = args.is_debug or True;
-
-    Globals.update_remotes = True; args.update_remote;
-    Globals.auto_pull      = args.auto_pull;
-
-    Globals.ignore_submodules = False; args.ignore_subs;
+    Globals.is_debug  = args.is_debug or True;
+    Globals.show_pull = args.show_pull;
+    Globals.show_push = args.show_push;
 
     Globals.start_path = normalize_path(args.path);
-    Globals.start_path = normalize_path("~/Documents/Projects/stdmatt")
+    Globals.start_path = normalize_path("~/Documents/Projects/stdmatt/personal/license_header")
 
     ##
     ## Discover the repositories.
     git_repos = [];
-    # for git_path in Path(Globals.start_path).rglob(".git"):
-        ## print(git_path);
-        # git_root_path = normalize_path(os.path.dirname(git_path));
-        # if(git_root_path in Globals.already_searched_git_path):
-            # log_debug("Path is already visited - Path: ({0})", git_root_path);
-            # continue;
-#
-        # git_repo = GitRepo(git_root_path);
-        # git_repos.append(git_repo);
-
     for root, dirs, files in os.walk(Globals.start_path):
         if(".git" not in dirs):
             continue;
@@ -651,8 +659,8 @@ def run():
         git_repo = git_repos[i];
 
         git_repo.update_remotes();
-        git_repo.find_branches();
-        git_repo.check_status();
+        git_repo.find_branches ();
+        git_repo.check_status  ();
 
         if(Globals.auto_pull):
             git_repo.try_to_pull();
