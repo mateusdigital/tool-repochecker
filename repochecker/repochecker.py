@@ -61,10 +61,14 @@ PROGRAM_COPYRIGHT =  2020;
 class Globals:
     ##
     ## Command Line Args.
-    is_debug       = False;
-    start_path     = "";
+    is_debug = False;
+
     update_remotes = False;
     auto_pull      = False;
+
+    ignore_submodules = False;
+
+    start_path = "";
 
     ##
     ## Housekeeping.
@@ -191,6 +195,7 @@ def normalize_path(path):
     path = os.path.abspath(path);
     return path;
 
+
 ##----------------------------------------------------------------------------##
 ## Git Functions                                                              ##
 ##----------------------------------------------------------------------------##
@@ -199,7 +204,7 @@ def git_exec(path, args):
     path           = normalize_path(path);
     cmd            = "git -C \"%s\" %s" % (path, args);
     cmd_components = shlex.split(cmd);
-    # log_debug("{0}", cmd);
+    log_debug("{0}", cmd);
 
     p = subprocess.Popen(cmd_components, stdout=subprocess.PIPE, stderr=subprocess.PIPE);
     output, errors = p.communicate();
@@ -368,7 +373,7 @@ class GitRepo:
         Globals.already_searched_git_path.append(normalize_path(root_path));
         log_debug(
             "Found {2} Path:({0}) - Submodule: ({1})",
-            root_path,
+            colors.path(root_path),
             is_submodule,
             "Submodule" if is_submodule else "Repo"
         );
@@ -380,8 +385,10 @@ class GitRepo:
         self.current_branch = None;
         self.submodules     = [];
 
-        self.find_submodules();
+        if(not Globals.ignore_submodules):
+            self.find_submodules();
 
+    ##--------------------------------------------------------------------------
     def is_dirty(self):
         for branch in self.branches:
             if(branch.is_dirty()):
@@ -398,6 +405,9 @@ class GitRepo:
         if(Globals.update_remotes):
             log_debug("Updating remotes...");
             git_exec(self.root_path, "remote update")
+
+        for submodule in self.submodules:
+            submodule.update_remotes();
 
     ##--------------------------------------------------------------------------
     def find_submodules(self):
@@ -472,6 +482,9 @@ class GitRepo:
         ## we need to research how to pull different branches...
         self.current_branch.try_to_pull();
 
+        for submodule in self.submodules:
+            submodule.try_to_pull()
+
     ##--------------------------------------------------------------------------
     def print_result(self):
         if(not self.is_dirty()):
@@ -479,7 +492,7 @@ class GitRepo:
 
         tab_indent();
 
-        repo_pretty_name = colorize_repo_name(self);
+        repo_pretty_name = colors.colorize_repo_name(self);
         tab_print(repo_pretty_name);
 
         for branch in self.branches:
@@ -564,6 +577,9 @@ def parse_args():
     parser.add_argument("--remote",    dest="update_remote", action="store_true", default=False);
     parser.add_argument("--auto-pull", dest="auto_pull",     action="store_true", default=False);
 
+    parser.add_argument("--ignore-submodules", dest="ignore_subs", action="store_true", default=False);
+
+
     ## Start Path.
     parser.add_argument(
         "path",
@@ -592,24 +608,38 @@ def run():
     if(not args.color_enabled):
         colors.disable_coloring();
 
-    Globals.is_debug       = args.is_debug;
-    Globals.start_path     = normalize_path(args.path);
-    Globals.update_remotes = args.update_remote;
+    Globals.is_debug = args.is_debug or True;
+
+    Globals.update_remotes = True; args.update_remote;
     Globals.auto_pull      = args.auto_pull;
 
-    Globals.start_path = normalize_path("~");
+    Globals.ignore_submodules = False; args.ignore_subs;
+
+    Globals.start_path = normalize_path(args.path);
+    Globals.start_path = normalize_path("~/Documents/Projects/stdmatt")
 
     ##
     ## Discover the repositories.
     git_repos = [];
-    for git_path in Path(Globals.start_path).rglob(".git"):
-        git_root_path = normalize_path(os.path.dirname(git_path));
-        if(git_root_path in Globals.already_searched_git_path):
-            log_debug("Path is already visited- Path: ({0})", git_root_path);
+    # for git_path in Path(Globals.start_path).rglob(".git"):
+        ## print(git_path);
+        # git_root_path = normalize_path(os.path.dirname(git_path));
+        # if(git_root_path in Globals.already_searched_git_path):
+            # log_debug("Path is already visited - Path: ({0})", git_root_path);
+            # continue;
+#
+        # git_repo = GitRepo(git_root_path);
+        # git_repos.append(git_repo);
+
+    for root, dirs, files in os.walk(Globals.start_path):
+        if(".git" not in dirs):
             continue;
 
-        git_repo = GitRepo(git_root_path);
+        git_repo = GitRepo(root);
         git_repos.append(git_repo);
+
+        del dirs[0:];
+
 
     ##
     ## Update the Repositories.
