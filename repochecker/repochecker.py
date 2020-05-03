@@ -28,7 +28,7 @@ import argparse;
 
 from pathlib import Path;
 from .colors import *;
-from .colors import colors
+
 
 ##----------------------------------------------------------------------------##
 ## Info                                                                       ##
