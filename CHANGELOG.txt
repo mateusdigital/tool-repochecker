@@ -1,0 +1,3 @@
+v1.1.0
+    - [CHANGE] Show the name of the repository that's being pulled.
+    - [ADD] Add the --help documentation.
