@@ -255,15 +255,18 @@ class GitBranch:
         self.diffs_to_pull = [];
         self.diffs_to_push = [];
 
+    ##--------------------------------------------------------------------------
     def is_dirty(self):
         return self.is_local_dirty() or self.is_remote_dirty();
 
+    ##--------------------------------------------------------------------------
     def is_local_dirty(self):
         return len(self.modified ) != 0 or len(self.added    ) != 0 or \
                len(self.deleted  ) != 0 or len(self.renamed  ) != 0 or \
                len(self.copied   ) != 0 or len(self.updated  ) != 0 or \
                len(self.untracked) != 0;
 
+    ##--------------------------------------------------------------------------
     def is_remote_dirty(self):
         return (len(self.diffs_to_pull) != 0 and Globals.show_pull) \
             or (len(self.diffs_to_push) != 0 and Globals.show_push);
@@ -411,7 +414,7 @@ class GitRepo:
     ##--------------------------------------------------------------------------
     def update_remotes(self):
         if(Globals.update_remotes):
-            log_debug("Updating remotes...");
+            log_info("Updating {0} remotes...", colors.repo_name(self.name));
             git_exec(self.root_path, "remote update")
 
         for submodule in self.submodules:
@@ -581,7 +584,7 @@ class GitRepo:
 
         ##
         ## Repo name.
-        print(tabs() + output_str + colors.colorize_repo_name(self));
+        print(tabs() + output_str + colors.colorize_git_repo_name(self));
 
         ##
         ## Branches.
