@@ -92,6 +92,18 @@ def get_help_str():
   {program_name} [--short]
   {program_name} <start-path>
 
+  --debug      : Prints extra information about the program execution.
+  --no-colors  : Disables coloring the output.
+
+  --remote     : Fetches the status of the repo's remotes (slow).
+  --submodules : Makes the operations applies to submodules as well.
+
+  --show-push  : Shows the information about changes to push.
+  --show-pull  : Shows the information about changes to pull.
+  --show-all   : Implies --show-push and --show-pull.
+
+  --short      : Displays the information into a condensed format.
+
 Options:
   *-h --help     : Show this screen.
   *-v --version  : Show program version and copyright.
