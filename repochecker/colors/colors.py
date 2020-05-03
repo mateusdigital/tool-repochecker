@@ -38,7 +38,7 @@ def magenta(s): return termcolor.colored(s, termcolor.MAGENTA);
 def cyan   (s): return termcolor.colored(s, termcolor.CYAN   );
 
 ##------------------------------------------------------------------------------
-def number(n): return cyan   (p);
+def number(n): return cyan   (n);
 def path  (p): return magenta(p);
 
 
