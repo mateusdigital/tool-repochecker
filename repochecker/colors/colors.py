@@ -17,7 +17,7 @@
 ##---------------------------------------------------------------------------~##
 
 import os;
-from mcow_py_termcolor import termcolor;
+from pw_py_termcolor import *;
 
 ##------------------------------------------------------------------------------
 termcolor.color_mode = termcolor.COLOR_MODE_ALWAYS;
@@ -85,5 +85,3 @@ def pulling_branch_name(s): return termcolor.colored(s, termcolor.CYAN);
 ##------------------------------------------------------------------------------
 def commit_sha(s): return red  (s);
 def commit_msg(s): return white(s);
-
-
