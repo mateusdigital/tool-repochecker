@@ -17,6 +17,9 @@
 ##                                                                            ##
 ##---------------------------------------------------------------------------~##
 
+##----------------------------------------------------------------------------##
+## Imports                                                                    ##
+##----------------------------------------------------------------------------##
 import os;
 import os.path;
 import glob;
@@ -25,9 +28,6 @@ import subprocess;
 import sys;
 import pdb;
 import argparse;
-
-from pathlib import Path;
-from .colors import *;
 
 
 ##----------------------------------------------------------------------------##
@@ -53,7 +53,8 @@ GIT_STATUS_UNTRACKED = "??";
 
 PROGRAM_NAME      = "repochecker";
 PROGRAM_COPYRIGHT =  2020;
-NL = "\n";
+NL                = "\n";
+
 
 ##----------------------------------------------------------------------------##
 ## Globals                                                                    ##
@@ -76,6 +77,78 @@ class Globals:
     ##
     ## Housekeeping.
     tab_size = -1;
+
+
+##----------------------------------------------------------------------------##
+## Color Functions                                                            ##
+##----------------------------------------------------------------------------##
+class NullTermColor:
+    GREEN   = 0;
+    RED     = 0;
+    BLUE    = 0;
+    YELLOW  = 0;
+    WHITE   = 0;
+    MAGENTA = 0;
+    CYAN    = 0;
+    GREY    = 0;
+    ON_RED  = 0;
+
+    def colored(text, _ = None, __ = None):
+        return text;
+
+termcolor = NullTermColor;
+
+##------------------------------------------------------------------------------
+def disable_coloring():
+    termcolor.color_mode = termcolor.COLOR_MODE_NEVER;
+##------------------------------------------------------------------------------
+def colors_green  (s): return termcolor.colored(s, termcolor.GREEN  );
+def colors_red    (s): return termcolor.colored(s, termcolor.RED    );
+def colors_blue   (s): return termcolor.colored(s, termcolor.BLUE   );
+def colors_yellow (s): return termcolor.colored(s, termcolor.YELLOW );
+def colors_white  (s): return termcolor.colored(s, termcolor.WHITE  );
+def colors_magenta(s): return termcolor.colored(s, termcolor.MAGENTA);
+def colors_cyan   (s): return termcolor.colored(s, termcolor.CYAN   );
+def colors_grey   (s): return termcolor.colored(s, termcolor.GREY   );
+def colors_on_red (s): return termcolor.colored(s, fg=None, bg=termcolor.ON_RED);
+##------------------------------------------------------------------------------
+def colors_number(n): return colors_cyan   (n);
+def colors_path  (p): return colors_magenta(p);
+##------------------------------------------------------------------------------
+def colors_repo_name (name): return colors_magenta(name);
+def colors_repo_clean(name): return colors_green  (name);
+def colors_repo_dirty(name): return colors_red    (name);
+
+def colors_colorize_git_repo_name(git_repo):
+    pretty_name = os.path.basename(git_repo.root_path);
+    if(git_repo.is_dirty()):
+        pretty_name = colors_repo_dirty(pretty_name);
+    else:
+        pretty_name = colors_repo_clean(pretty_name);
+
+    prefix = "[Submodule]" if git_repo.is_submodule else "[Repo]";
+    path   = git_repo.root_path;
+
+    return "{0} {1} ".format(prefix, pretty_name, path);
+
+##------------------------------------------------------------------------------
+def colors_branch_name     (s): return colors_grey  (s);
+def colors_branch_modified (s): return colors_yellow(s);
+def colors_branch_added    (s): return colors_green (s);
+def colors_branch_deleted  (s): return colors_red   (s);
+def colors_branch_renamed  (s): return colors_yellow(s);
+def colors_branch_copied   (s): return colors_yellow(s);
+def colors_branch_updated  (s): return colors_yellow(s);
+def colors_branch_untracked(s): return colors_on_red(s);
+##------------------------------------------------------------------------------
+def colors_diffs_to_pull(s): return colors_yellow(s);
+def colors_diffs_to_push(s): return colors_green (s);
+##------------------------------------------------------------------------------
+def colors_pulling_repo_name  (s): return colors_magenta(s);
+def colors_pulling_branch_name(s): return colors_cyan   (s);
+##------------------------------------------------------------------------------
+def colors_commit_sha(s): return colors_red  (s);
+def colors_commit_msg(s): return colors_white(s);
 
 
 ##----------------------------------------------------------------------------##
@@ -145,7 +218,7 @@ def log_debug(fmt, *args):
         return;
 
     formatted = fmt.format(*args);
-    print(colors.green("[DEBUG]"), formatted);
+    print(colors_green("[DEBUG]"), formatted);
 
 ##------------------------------------------------------------------------------
 def log_debug_error(fmt, *args):
@@ -158,13 +231,13 @@ def log_debug_error(fmt, *args):
 ##------------------------------------------------------------------------------
 def log_error(fmt, *args):
     formatted = fmt.format(*args);
-    print(colors.red("[ERROR]"), formatted);
+    print(colors_red("[ERROR]"), formatted);
 
 ##------------------------------------------------------------------------------
 def log_info(fmt, *args):
     # pdb.set_trace();
     formatted = fmt.format(*args);
-    print(colors.blue("[INFO]"), formatted);
+    print(colors_blue("[INFO]"), formatted);
 
 ##------------------------------------------------------------------------------
 def log_fatal(fmt, *args):
@@ -173,7 +246,7 @@ def log_fatal(fmt, *args):
     else:
         formatted = fmt;
 
-    print(colors.red("[FATAL]"), formatted);
+    print(colors_red("[FATAL]"), formatted);
     exit(1);
 
 
@@ -326,8 +399,8 @@ class GitBranch:
 
     ##--------------------------------------------------------------------------
     def try_to_pull(self):
-        color_repo_name   = colors.pulling_repo_name  (self.repo.name);
-        color_branch_name = colors.pulling_branch_name(self.name);
+        color_repo_name   = colors_pulling_repo_name  (self.repo.name);
+        color_branch_name = colors_pulling_branch_name(self.name);
 
         if(not self.is_current):
             log_error(
@@ -396,7 +469,7 @@ class GitRepo:
     def __init__(self, root_path, is_submodule=False):
         log_debug(
             "Found {2} Path:({0}) - Submodule: ({1})",
-            colors.path(root_path),
+            colors_path(root_path),
             is_submodule,
             "Submodule" if is_submodule else "Repo"
         );
@@ -426,7 +499,7 @@ class GitRepo:
     ##--------------------------------------------------------------------------
     def update_remotes(self):
         if(Globals.update_remotes):
-            log_info("Updating {0} remotes...", colors.repo_name(self.name));
+            log_info("Updating {0} remotes...", colors_repo_name(self.name));
             git_exec(self.root_path, "remote update")
 
         for submodule in self.submodules:
@@ -516,13 +589,13 @@ class GitRepo:
             return "{0}({1}) ".format(color_func(msg), color_func(len(diff)));
 
         status_str = "";
-        status_str += _concat_status_str(branch.modified  , colors.branch_modified  ,  GIT_STATUS_MODIFIED );
-        status_str += _concat_status_str(branch.added     , colors.branch_added     ,  GIT_STATUS_ADDED    );
-        status_str += _concat_status_str(branch.deleted   , colors.branch_deleted   ,  GIT_STATUS_DELETED  );
-        status_str += _concat_status_str(branch.renamed   , colors.branch_renamed   ,  GIT_STATUS_RENAMED  );
-        status_str += _concat_status_str(branch.copied    , colors.branch_copied    ,  GIT_STATUS_COPIED   );
-        status_str += _concat_status_str(branch.updated   , colors.branch_updated   ,  GIT_STATUS_UPDATED  );
-        status_str += _concat_status_str(branch.untracked , colors.branch_untracked ,  GIT_STATUS_UNTRACKED);
+        status_str += _concat_status_str(branch.modified  , colors_branch_modified  ,  GIT_STATUS_MODIFIED );
+        status_str += _concat_status_str(branch.added     , colors_branch_added     ,  GIT_STATUS_ADDED    );
+        status_str += _concat_status_str(branch.deleted   , colors_branch_deleted   ,  GIT_STATUS_DELETED  );
+        status_str += _concat_status_str(branch.renamed   , colors_branch_renamed   ,  GIT_STATUS_RENAMED  );
+        status_str += _concat_status_str(branch.copied    , colors_branch_copied    ,  GIT_STATUS_COPIED   );
+        status_str += _concat_status_str(branch.updated   , colors_branch_updated   ,  GIT_STATUS_UPDATED  );
+        status_str += _concat_status_str(branch.untracked , colors_branch_untracked ,  GIT_STATUS_UNTRACKED);
         status_str = status_str.rstrip();
 
         status_str = " - {0}".format(status_str) if len(status_str) != 0 else "";
@@ -535,14 +608,14 @@ class GitRepo:
             result = "";
             if(Globals.show_pull and len(branch.diffs_to_pull) != 0):
                 result += " - {0}:({1})".format(
-                    colors.diffs_to_pull("To Pull"),
-                    colors.number(len(branch.diffs_to_pull))
+                    colors_diffs_to_pull("To Pull"),
+                    colors_number(len(branch.diffs_to_pull))
                 );
 
             if(Globals.show_push and len(branch.diffs_to_push) != 0):
                 result += " - {0}:({1})".format(
-                    colors.diffs_to_pull("To Push"),
-                    colors.number(len(branch.diffs_to_push))
+                    colors_diffs_to_pull("To Push"),
+                    colors_number(len(branch.diffs_to_push))
                 );
             return result;
 
@@ -556,8 +629,8 @@ class GitRepo:
             tab_indent();
             for line in diff:
                 components = line.split(" ");
-                sha = colors.commit_sha(components[0]);
-                msg = colors.commit_msg(" ".join(components[1:]));
+                sha = colors_commit_sha(components[0]);
+                msg = colors_commit_msg(" ".join(components[1:]));
 
                 output_str += tabs() + "[{0} {1}]".format(sha, msg) + NL;
             tab_unindent();
@@ -570,15 +643,15 @@ class GitRepo:
         tab_indent();
         if(Globals.show_pull and len(branch.diffs_to_pull) != 0):
             result += tabs() + "{0}:({1})\n".format(
-                colors.diffs_to_pull("To Pull"),
-                colors.number(len(branch.diffs_to_pull))
+                colors_diffs_to_pull("To Pull"),
+                colors_number(len(branch.diffs_to_pull))
             );
             result += _concat_diff(branch.diffs_to_pull);
 
         if(Globals.show_push and len(branch.diffs_to_push) != 0):
             result += tabs() + "{0}:({1})\n".format(
-                colors.diffs_to_push("To Push"),
-                colors.number(len(branch.diffs_to_push))
+                colors_diffs_to_push("To Push"),
+                colors_number(len(branch.diffs_to_push))
             );
             result += _concat_diff(branch.diffs_to_push);
         tab_unindent();
@@ -596,7 +669,7 @@ class GitRepo:
 
         ##
         ## Repo name.
-        print(tabs() + output_str + colors.colorize_git_repo_name(self));
+        print(tabs() + output_str + colors_colorize_git_repo_name(self));
 
         ##
         ## Branches.
@@ -608,7 +681,7 @@ class GitRepo:
             if(branch is None):
                 pdb.set_trace();
 
-            branch_name = colors.branch_name(branch.name);
+            branch_name = colors_branch_name(branch.name);
             status_str  = self._build_status_str(branch);
             diffs_str   = self._build_diffs_str (branch);
 
@@ -686,7 +759,7 @@ def run():
 
     ## Output
     if(not args.color_enabled):
-        colors.disable_coloring();
+        colors_disable_coloring();
 
     Globals.is_debug  = args.is_debug;
     Globals.show_pull = args.show_pull;
@@ -733,3 +806,5 @@ def run():
     for i in range(0, len(git_repos)):
         git_repo = git_repos[i];
         git_repo.print_result();
+
+run();
