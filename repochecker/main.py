@@ -16,6 +16,7 @@
 ##  Description :                                                             ##
 ##                                                                            ##
 ##---------------------------------------------------------------------------~##
+## @TODO(stdmatt): Adjust the header copyright information for 2021 - 3/16/2021, 10:48:56 AM
 
 ##----------------------------------------------------------------------------##
 ## Imports                                                                    ##
@@ -33,6 +34,7 @@ import argparse;
 ##----------------------------------------------------------------------------##
 ## Info                                                                       ##
 ##----------------------------------------------------------------------------##
+## @TODO(stdmatt): Adjust the copyright information for 2021 - 3/16/2021, 10:48:56 AM
 __version__   = "1.0.0";
 __author__    = "stdmatt - <stdmatt@pixelwizards.io>";
 __date__      = "Apr 09, 2020";
@@ -97,6 +99,8 @@ class NullTermColor:
         return text;
 
 termcolor = NullTermColor;
+## @todo(stdmatt): Try to import the termcolor... 3/16/2021, 10:46:29 AM
+
 
 ##------------------------------------------------------------------------------
 def disable_coloring():

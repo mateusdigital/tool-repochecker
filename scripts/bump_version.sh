@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+## @todo(stdmatt): Check if this script is still relevant - 3/16/2021, 10:49:59 AM
 
 ##----------------------------------------------------------------------------##
 ## Imports                                                                    ##

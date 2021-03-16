@@ -16,16 +16,5 @@
 ##  Description :                                                             ##
 ##                                                                            ##
 ##---------------------------------------------------------------------------~##
-
-##
-## Imports
-source "/usr/local/src/stdmatt/shellscript_utils/main.sh";
-
-##
-## Variables
-SCRIPT_DIR=$(pw_get_script_dir);
-
-##
-## Script
-pw_as_super_user python3 -m pip uninstall repochecker --yes
-pw_as_super_user python3 "$SCRIPT_DIR/setup.py" install
+## @TODO(stdmatt): Adjust the header copyright information for 2021 - 3/16/2021, 10:48:56 AM
+## @TODO(stdmatt): Create a new install script for unix - 3/16/2021, 10:51:03 AM
