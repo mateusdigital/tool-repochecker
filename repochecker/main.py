@@ -233,7 +233,7 @@ def log_debug_error(fmt, *args):
         return;
 
     formatted = fmt.format(*args);
-    print("[DEBUG-ERROR] ", formatted);
+    print(colors_red("[DEBUG-ERROR]"), formatted);
 
 ##------------------------------------------------------------------------------
 def log_error(fmt, *args):
@@ -540,7 +540,7 @@ class GitRepo:
                     , "Submodule Invalid Path : {2}"
                 ]);
                 msg = msg.format(self.root_path, line, submodule_path);
-                log_fatal(msg);
+                log_error(msg);
 
             log_debug(
                 "Found submodule of ({0}) at ({1})",
