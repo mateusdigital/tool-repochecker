@@ -26,7 +26,7 @@ if (-not (Test-Path -LiteralPath $PROGRAM_INSTALL_PATH)) {
 
 ## Copy the file to the install dir...
 cp $SCRIPT_DIR/$PROGRAM_NAME/main.py    $PROGRAM_INSTALL_PATH/main.py
-echo "@echo off `npython3 $PROGRAM_INSTALL_PATH/main.py" | Out-File -Encoding ASCII -FilePath $PROGRAM_INSTALL_PATH/repochecker.bat
+echo "@echo off `npython3 $PROGRAM_INSTALL_PATH/main.py %1 %2 %3 %4 %5 %6 %7 %8 %9" | Out-File -Encoding ASCII -FilePath $PROGRAM_INSTALL_PATH/repochecker.bat
 
 
 ## @TODO(stdmatt): Implement a way to add the directory to the path so we can use
