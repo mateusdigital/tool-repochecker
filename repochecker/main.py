@@ -98,7 +98,10 @@ class NullTermColor:
     def colored(text, _ = None, __ = None):
         return text;
 
-termcolor = NullTermColor;
+try:
+    import pw_py_termcolor as termcolor;
+except:
+    termcolor = NullTermColor;
 ## @todo(stdmatt): Try to import the termcolor... 3/16/2021, 10:46:29 AM
 
 
