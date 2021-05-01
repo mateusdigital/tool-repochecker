@@ -24,13 +24,12 @@
 ##----------------------------------------------------------------------------##
 import os;
 import os.path;
-import glob;
 import shlex;
 import subprocess;
 import sys;
 import pdb;
 import argparse;
-
+import threading;
 
 ##----------------------------------------------------------------------------##
 ## Info                                                                       ##
@@ -102,16 +101,10 @@ class NullTermColor:
     def colored(text, _ = None, __ = None):
         return text;
 
-# try:
-#     import pw_py_termcolor as termcolor;
-# except:
 termcolor = NullTermColor;
 ## @todo(stdmatt): Try to import the termcolor... 3/16/2021, 10:46:29 AM
 
 
-##------------------------------------------------------------------------------
-def disable_coloring():
-    termcolor.color_mode = termcolor.COLOR_MODE_NEVER;
 ##------------------------------------------------------------------------------
 def colors_green  (s): return termcolor.colored(s, termcolor.GREEN  );
 def colors_red    (s): return termcolor.colored(s, termcolor.RED    );
@@ -129,6 +122,7 @@ def colors_path  (p): return colors_magenta(p);
 def colors_repo_name (name): return colors_magenta(name);
 def colors_repo_clean(name): return colors_green  (name);
 def colors_repo_dirty(name): return colors_red    (name);
+
 def colors_colorize_git_repo_name(git_repo):
     pretty_name = os.path.basename(git_repo.root_path);
     if(git_repo.is_dirty()):
@@ -237,8 +231,8 @@ def build_full_repo_name(git_repo):
 
 ##------------------------------------------------------------------------------
 def log_debug(fmt, *args):
-    # if(not Globals.is_debug):
-    #     return;
+    if(not Globals.is_debug):
+        return;
     formatted = fmt.format(*args);
     print(colors_green("[DEBUG]"), formatted);
 
@@ -459,6 +453,9 @@ class GitBranch:
 
     ##--------------------------------------------------------------------------
     def try_to_pull(self):
+        if(not Globals.auto_pull):
+            return;
+
         color_repo_name   = colors_pulling_repo_name  (build_full_repo_name(self.repo));
         color_branch_name = colors_pulling_branch_name(self.name);
 
@@ -554,9 +551,8 @@ class GitRepo:
             self.root_path
         );
 
-        self.find_branches();
-        if(Globals.submodules):
-            self.find_submodules();
+        self.find_submodules();
+        self.find_branches  ();
 
     ##--------------------------------------------------------------------------
     def is_dirty(self):
@@ -583,6 +579,9 @@ class GitRepo:
 
     ##--------------------------------------------------------------------------
     def find_submodules(self):
+        if(not Globals.submodules):
+            return;
+
         result, error_code = git_exec(
             self.root_path,
             "config --file .gitmodules --name-only --get-regexp path"
@@ -824,6 +823,17 @@ def parse_args():
     return parser.parse_args();
 
 
+def update_repo_task(git_repo):
+    git_repo.update_remotes();
+    git_repo.check_status  ();
+    git_repo.try_to_pull   ();
+
+def create_task(git_repo):
+    x = threading.Thread(target=, args=(git_repo,));
+    x.start();
+    return x;
+
+
 ##----------------------------------------------------------------------------##
 ## Entry Point                                                                ##
 ##----------------------------------------------------------------------------##
@@ -859,7 +869,7 @@ def run():
     Globals.show_short = args.show_short;
 
     ## Path.
-    Globals.start_path = normalize_path("~/Documents/Projects/");#args.path);
+    Globals.start_path = normalize_path(args.path);
 
     ##
     ## Discover the repositories.
@@ -882,16 +892,17 @@ def run():
     ## Update the Repositories.
     log_info("Found {0} repos...", len(git_repos));
 
+    tasks = [];
     for i in range(0, len(git_repos)):
         log_info("Updating Repository ({0} of {1})", i+1, len(git_repos));
 
         git_repo = git_repos[i];
+        x = create_task(git_repo);
+        if(x is not None):
+            tasks.append(x);
 
-        git_repo.update_remotes();
-        git_repo.check_status  ();
-
-        if(Globals.auto_pull):
-            git_repo.try_to_pull();
+    for t in tasks:
+        t.join();
 
     ##
     ## Present Repositories.
