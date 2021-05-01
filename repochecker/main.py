@@ -551,9 +551,6 @@ class GitRepo:
             self.root_path
         );
 
-        self.find_submodules();
-        self.find_branches  ();
-
     ##--------------------------------------------------------------------------
     def is_dirty(self):
         for branch in self.branches:
@@ -756,7 +753,11 @@ class GitRepo:
 
         ##
         ## Repo name.
-        print(tabs() + output_str + colors_colorize_git_repo_name(self));
+        print("{tabs}{repo_name}: ({repo_path})".format(
+                tabs=tabs(),
+                repo_name=colors_colorize_git_repo_name(self),
+                repo_path=self.root_path
+        ));
 
         ##
         ## Branches.
@@ -823,13 +824,29 @@ def parse_args():
     return parser.parse_args();
 
 
+##
+## Multithread support
+##
+##------------------------------------------------------------------------------
 def update_repo_task(git_repo):
     git_repo.update_remotes();
     git_repo.check_status  ();
     git_repo.try_to_pull   ();
 
-def create_task(git_repo):
-    x = threading.Thread(target=, args=(git_repo,));
+##------------------------------------------------------------------------------
+def create_update_task(git_repo):
+    x = threading.Thread(target=update_repo_task, args=(git_repo,));
+    x.start();
+    return x;
+
+##------------------------------------------------------------------------------
+def init_repo_task(git_repo):
+    git_repo.find_branches  ();
+    git_repo.find_submodules();
+
+##------------------------------------------------------------------------------
+def create_init_task(git_repo):
+    x = threading.Thread(target=init_repo_task, args=(git_repo,));
     x.start();
     return x;
 
@@ -874,6 +891,7 @@ def run():
     ##
     ## Discover the repositories.
     git_repos = [];
+    tasks     = [];
     for root, dirs, files in os.walk(Globals.start_path):
         if(".repochecker_ignore" in files):
             log_info("Found .repochecker_ignore in ({})...", root);
@@ -885,19 +903,25 @@ def run():
         git_repo = GitRepo(root);
         git_repos.append(git_repo);
 
+        x = create_init_task(git_repo);
+        if(x is not None):
+            tasks.append(x);
+
         log_debug("");
         del dirs[0:];
 
+    for t in tasks:
+        t.join();
+
     ##
     ## Update the Repositories.
-    log_info("Found {0} repos...", len(git_repos));
-
     tasks = [];
+    log_info("Found {0} repos...", len(git_repos));
     for i in range(0, len(git_repos)):
         log_info("Updating Repository ({0} of {1})", i+1, len(git_repos));
 
         git_repo = git_repos[i];
-        x = create_task(git_repo);
+        x = create_update_task(git_repo);
         if(x is not None):
             tasks.append(x);
 
