@@ -18,6 +18,7 @@
 ##---------------------------------------------------------------------------~##
 ## @TODO(stdmatt): Adjust the header copyright information for 2021 - 3/16/2021, 10:48:56 AM
 
+
 ##----------------------------------------------------------------------------##
 ## Imports                                                                    ##
 ##----------------------------------------------------------------------------##
@@ -69,10 +70,13 @@ class Globals:
 
     submodules = False;
 
-    is_debug   = False;
-    show_push  = False;
-    show_pull  = False;
-    show_short = False;
+    is_debug     = True;
+    is_debug_git = False;
+    show_push    = False;
+    show_pull    = False;
+    show_short   = False;
+
+    no_colors    = False;
 
     start_path = "";
 
@@ -98,10 +102,10 @@ class NullTermColor:
     def colored(text, _ = None, __ = None):
         return text;
 
-try:
-    import pw_py_termcolor as termcolor;
-except:
-    termcolor = NullTermColor;
+# try:
+#     import pw_py_termcolor as termcolor;
+# except:
+termcolor = NullTermColor;
 ## @todo(stdmatt): Try to import the termcolor... 3/16/2021, 10:46:29 AM
 
 
@@ -125,7 +129,6 @@ def colors_path  (p): return colors_magenta(p);
 def colors_repo_name (name): return colors_magenta(name);
 def colors_repo_clean(name): return colors_green  (name);
 def colors_repo_dirty(name): return colors_red    (name);
-
 def colors_colorize_git_repo_name(git_repo):
     pretty_name = os.path.basename(git_repo.root_path);
     if(git_repo.is_dirty()):
@@ -220,20 +223,38 @@ Check http://stdmatt.com for more :)""".format(
 ## Log Functions                                                              ##
 ##----------------------------------------------------------------------------##
 ##------------------------------------------------------------------------------
-def log_debug(fmt, *args):
-    if(not Globals.is_debug):
-        return;
+def repo_or_sub(git_repo):
+    return "Submodule" if git_repo.is_submodule else "Repo";
 
+##------------------------------------------------------------------------------
+def build_full_repo_name(git_repo):
+    name = git_repo.name;
+    repo = git_repo;
+    while(repo.parent is not None):
+        name = "{}/{}".format(repo.parent.name, name);
+        repo = repo.parent;
+    return name;
+
+##------------------------------------------------------------------------------
+def log_debug(fmt, *args):
+    # if(not Globals.is_debug):
+    #     return;
     formatted = fmt.format(*args);
     print(colors_green("[DEBUG]"), formatted);
 
 ##------------------------------------------------------------------------------
-def log_debug_error(fmt, *args):
-    if(not Globals.is_debug):
+def log_git(fmt, *args):
+    if(not Globals.is_debug_git):
         return;
-
     formatted = fmt.format(*args);
-    print(colors_red("[DEBUG-ERROR]"), formatted);
+    print(colors_magenta("[GIT]"), formatted);
+
+##------------------------------------------------------------------------------
+def log_git_error(fmt, *args):
+    if(not Globals.is_debug_git):
+        return;
+    formatted = fmt.format(*args);
+    print(colors_red("[GIT-ERROR]"), formatted);
 
 ##------------------------------------------------------------------------------
 def log_error(fmt, *args):
@@ -289,9 +310,9 @@ def get_home_path():
 ##------------------------------------------------------------------------------
 def normalize_path(path):
     path = os.path.expanduser(path);
-    path = os.path.normcase(path);
-    path = os.path.normpath(path);
-    path = os.path.abspath(path);
+    path = os.path.normcase  (path);
+    path = os.path.normpath  (path);
+    path = os.path.abspath   (path);
     return path;
 
 
@@ -303,13 +324,13 @@ def git_exec(path, args):
     path           = normalize_path(path);
     cmd            = "git -C \"%s\" %s" % (path, args);
     cmd_components = shlex.split(cmd);
-    log_debug("{0}", cmd);
+    log_git("{0}", cmd);
 
     p = subprocess.Popen(cmd_components, stdout=subprocess.PIPE, stderr=subprocess.PIPE);
     output, errors = p.communicate();
 
     if(p.returncode):
-        log_debug_error("Failed running {0}", cmd);
+        log_git_error("Failed running {0}", cmd);
         return errors.decode('utf-8'), p.returncode;
 
     return output.decode('utf-8'), p.returncode;
@@ -324,6 +345,10 @@ def git_is_current_branch(branch_name):
     clean_name = branch_name.strip(" ");
     return clean_name.startswith("*");
 
+##------------------------------------------------------------------------------
+def git_is_detached_branch(branch_name):
+    clean_name = branch_name.strip(" ");
+    return clean_name.startswith("HEAD detached at");
 
 ##----------------------------------------------------------------------------##
 ## Types                                                                      ##
@@ -332,9 +357,10 @@ def git_is_current_branch(branch_name):
 class GitBranch:
     ##--------------------------------------------------------------------------
     def __init__(self, branch_name, repo):
-        self.name       = git_clean_branch_name(branch_name);
-        self.is_current = git_is_current_branch(branch_name);
-        self.repo       = repo;
+        self.name        = git_clean_branch_name (branch_name);
+        self.is_current  = git_is_current_branch (branch_name);
+        self.is_detached = git_is_detached_branch(branch_name);
+        self.repo        = repo;
 
         self.modified  = [];
         self.added     = [];
@@ -346,6 +372,16 @@ class GitBranch:
 
         self.diffs_to_pull = [];
         self.diffs_to_push = [];
+
+        log_debug(
+            "Creating Branch\n" +
+            "   Name : {}   \n" +
+            "   Owner: {}   \n" +
+            "   State: {}     ",
+            self.name,
+            build_full_repo_name(self.repo),
+            "Detached" if self.is_detached else "Current" if self.is_current else "None",
+        );
 
     ##--------------------------------------------------------------------------
     def is_dirty(self):
@@ -403,10 +439,27 @@ class GitBranch:
         self.diffs_to_pull = self.find_diffs_from_remote("{1}..{0}/{1}", remote_name);
         self.diffs_to_push = self.find_diffs_from_remote("{0}/{1}..{1}", remote_name);
 
+        if(len(self.diffs_to_pull) != 0):
+            log_debug(
+                "{} {}/{} diffs to pull: {}",
+                repo_or_sub(self.repo),
+                build_full_repo_name(self.repo),
+                self.name,
+                len(self.diffs_to_pull)
+            );
+        if(len(self.diffs_to_push) != 0):
+            log_debug(
+                "{} {}/{} diffs to push: {}",
+                repo_or_sub(self.repo),
+                build_full_repo_name(self.repo),
+                self.name,
+                len(self.diffs_to_push)
+            );
+
 
     ##--------------------------------------------------------------------------
     def try_to_pull(self):
-        color_repo_name   = colors_pulling_repo_name  (self.repo.name);
+        color_repo_name   = colors_pulling_repo_name  (build_full_repo_name(self.repo));
         color_branch_name = colors_pulling_branch_name(self.name);
 
         if(not self.is_current):
@@ -415,6 +468,14 @@ class GitBranch:
                 color_repo_name,
                 color_branch_name
             );
+            return;
+        if(self.is_detached):
+            log_error(
+                "{0}/{1} is deatached branch and will not be auto pulled.",
+                color_repo_name,
+                color_branch_name
+            );
+            return;
 
         if(self.is_local_dirty()):
             log_info(
@@ -473,21 +534,27 @@ class GitBranch:
 ##------------------------------------------------------------------------------
 class GitRepo:
     ##--------------------------------------------------------------------------
-    def __init__(self, root_path, is_submodule=False):
-        log_debug(
-            "Found {2} Path:({0}) - Submodule: ({1})",
-            colors_path(root_path),
-            is_submodule,
-            "Submodule" if is_submodule else "Repo"
-        );
-
+    def __init__(self, root_path, is_submodule=False, parent=None):
         self.name           = os.path.basename(root_path);
         self.root_path      = root_path;
         self.is_submodule   = is_submodule;
+        self.parent         = parent;
         self.branches       = [];
         self.current_branch = None;
         self.submodules     = [];
 
+        log_debug(
+            "Creating {}   \n" +
+            "  Name   : {} \n" +
+            "  Parent : {} \n" +
+            "  Path   : {}   " ,
+            repo_or_sub(self),
+            self.name,
+            "None" if parent is None else build_full_repo_name(self.parent),
+            self.root_path
+        );
+
+        self.find_branches();
         if(Globals.submodules):
             self.find_submodules();
 
@@ -505,9 +572,11 @@ class GitRepo:
 
     ##--------------------------------------------------------------------------
     def update_remotes(self):
-        if(Globals.update_remotes):
-            log_info("Updating {0} remotes...", colors_repo_name(self.name));
-            git_exec(self.root_path, "remote update")
+        if(not Globals.update_remotes):
+            return;
+
+        log_info("Updating ({}) remotes...", build_full_repo_name(self));
+        git_exec(self.root_path, "remote update")
 
         for submodule in self.submodules:
             submodule.update_remotes();
@@ -528,34 +597,46 @@ class GitRepo:
             if(len(line) == 0):
                 continue;
 
-            submodule_path = line[len("submodule."):-(len(".path"))];
-            submodule_path = os.path.join(self.root_path, submodule_path);
+            submodule_name = line[len("submodule."):-(len(".path"))];
+            submodule_path = os.path.join(self.root_path, submodule_name);
+            log_debug(
+                "{}: ({}) found submodule ({}) - Path: ({})",
+                repo_or_sub(self),
+                self.name,
+                submodule_name,
+                submodule_path
+            );
 
             if(not os.path.isdir(submodule_path)):
                 msg = "\n".join([
                     "While scanning repository submodules"
                     , "repochecker found a submodule entry that doesn't correspond to a valid path."
-                    , "Repository Path        : {0}"
-                    , "Submodule Entry        : {1}"
-                    , "Submodule Invalid Path : {2}"
+                    , "   Repository Path        : {0}"
+                    , "   Submodule Entry        : {1}"
+                    , "   Submodule Invalid Path : {2}"
                 ]);
                 msg = msg.format(self.root_path, line, submodule_path);
                 log_error(msg);
+                continue;
 
-            log_debug(
-                "Found submodule of ({0}) at ({1})",
-                self.root_path,
-                submodule_path
-            );
-
-            git_repo = GitRepo(submodule_path, True);
+            git_repo = GitRepo(submodule_path, True, self);
             self.submodules.append(git_repo);
 
     ##--------------------------------------------------------------------------
     def find_branches(self):
         result, error_code = git_exec(self.root_path, "branch");
-        ## todo(stdmatt): error handling...
-        for branch_name in result.splitlines():
+        if(error_code != 0):
+            log_error(
+                "{} {} - Failed to get branches - Error Code: ({}) - Result: ({})",
+                repo_or_sub(self),
+                self.name,
+                error_code,
+                result
+            );
+            return;
+
+        lines = result.splitlines();
+        for branch_name in lines:
             branch = GitBranch(branch_name, self);
             self.branches.append(branch);
             if(branch.is_current):
@@ -766,7 +847,7 @@ def run():
 
     ## Output
     if(not args.color_enabled):
-        colors_disable_coloring();
+        Globals.no_colors = True;
 
     Globals.is_debug  = args.is_debug;
     Globals.show_pull = args.show_pull;
@@ -778,18 +859,23 @@ def run():
     Globals.show_short = args.show_short;
 
     ## Path.
-    Globals.start_path = normalize_path(args.path);
+    Globals.start_path = normalize_path("~/Documents/Projects/");#args.path);
 
     ##
     ## Discover the repositories.
     git_repos = [];
     for root, dirs, files in os.walk(Globals.start_path):
+        if(".repochecker_ignore" in files):
+            log_info("Found .repochecker_ignore in ({})...", root);
+            del dirs[0:];
+            continue;
         if(".git" not in dirs):
             continue;
 
         git_repo = GitRepo(root);
         git_repos.append(git_repo);
 
+        log_debug("");
         del dirs[0:];
 
     ##
@@ -797,12 +883,11 @@ def run():
     log_info("Found {0} repos...", len(git_repos));
 
     for i in range(0, len(git_repos)):
-        log_debug("Updating Repository ({0} of {1})", i+1, len(git_repos));
+        log_info("Updating Repository ({0} of {1})", i+1, len(git_repos));
 
         git_repo = git_repos[i];
 
         git_repo.update_remotes();
-        git_repo.find_branches ();
         git_repo.check_status  ();
 
         if(Globals.auto_pull):
