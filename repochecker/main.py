@@ -814,6 +814,8 @@ def parse_args():
     parser.add_argument("--show-all",  dest="show_all",      action="store_true",  default=False);
     parser.add_argument("--short",     dest="show_short",    action="store_true",  default=False);
 
+    parser.add_argument("--all", dest="do_all", action="store_true", default=False);
+
     ## Start Path.
     parser.add_argument(
         "path",
@@ -882,6 +884,12 @@ def run():
     if(args.show_all):
         Globals.show_pull = True;
         Globals.show_push = True;
+    if(args.do_all):
+        Globals.update_remotes = True;
+        Globals.auto_pull      = True;
+        Globals.submodules     = True;
+        Globals.show_push      = True;
+        Globals.show_pull      = True;
 
     Globals.show_short = args.show_short;
 
