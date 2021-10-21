@@ -468,7 +468,7 @@ class GitBranch:
             return;
         if(self.is_detached):
             log_error(
-                "{0}/{1} is deatached branch and will not be auto pulled.",
+                "{0}/{1} is detached branch and will not be auto pulled.",
                 color_repo_name,
                 color_branch_name
             );
@@ -901,6 +901,10 @@ def run():
     git_repos = [];
     tasks     = [];
     for root, dirs, files in os.walk(Globals.start_path):
+        if("$RECYCLE.BIN" in root):
+            log_info("Found a recycle in at: ({})...", root);
+            del dirs[0:];
+            continue;
         if(".repochecker_ignore" in files):
             log_info("Found .repochecker_ignore in ({})...", root);
             del dirs[0:];
