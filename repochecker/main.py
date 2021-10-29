@@ -57,6 +57,9 @@ PROGRAM_NAME      = "repochecker";
 PROGRAM_COPYRIGHT =  2020;
 NL                = "\n";
 
+GLOBAL_REPOCHECKER_IGNORE_DIRPATH  = os.path.abspath(os.path.expanduser("~"));
+GLOBAL_REPOCHECKER_IGNORE_FULLPATH = os.path.join(GLOBAL_REPOCHECKER_IGNORE_DIRPATH, "./.repochecker_ignore");
+
 
 ##----------------------------------------------------------------------------##
 ## Globals                                                                    ##
@@ -81,7 +84,8 @@ class Globals:
 
     ##
     ## Housekeeping.
-    tab_size = -1;
+    tab_size              = -1;
+    directories_to_ignore = [];
 
 
 ##----------------------------------------------------------------------------##
@@ -260,6 +264,12 @@ def log_info(fmt, *args):
     # pdb.set_trace();
     formatted = fmt.format(*args);
     print(colors_blue("[INFO]"), formatted);
+
+##------------------------------------------------------------------------------
+def log_warn(fmt, *args):
+    # pdb.set_trace();
+    formatted = fmt.format(*args);
+    print(colors_yellow("[WARN]"), formatted);
 
 ##------------------------------------------------------------------------------
 def log_fatal(fmt, *args):
@@ -897,15 +907,36 @@ def run():
     Globals.start_path = normalize_path(args.path);
 
     ##
+    ## Load the global .repochecker_ignore.
+    if(os.path.isfile(GLOBAL_REPOCHECKER_IGNORE_FULLPATH)):
+        log_info("Reading global repochecker_ignore at: ({})", GLOBAL_REPOCHECKER_IGNORE_FULLPATH);
+        f = open(GLOBAL_REPOCHECKER_IGNORE_FULLPATH);
+        lines = f.readlines();
+        f.close();
+
+        for l in lines:
+            l = l.strip(" ").replace("\n", "");
+            if(os.path.isdir(l)):
+                Globals.directories_to_ignore.append(l);
+            else:
+                log_warn("Invalid path: ({}) - Igoring it...", l);
+
+
+    ##
     ## Discover the repositories.
     git_repos = [];
     tasks     = [];
     for root, dirs, files in os.walk(Globals.start_path):
+        ## @hack(stdmatt): Ignore the recycle bin on Windows.
+        ## Probably we wanna check a better way that ensure that it's a bin...
         if("$RECYCLE.BIN" in root):
             log_info("Found a recycle in at: ({})...", root);
             del dirs[0:];
             continue;
-        if(".repochecker_ignore" in files):
+        if(root in Globals.directories_to_ignore):
+            log_info("Global .repochecker_ignore says to ignore path: ({})...", root);
+            continue;
+        if(".repochecker_ignore" in files and os.path.abspath(root) != GLOBAL_REPOCHECKER_IGNORE_DIRPATH):
             log_info("Found .repochecker_ignore in ({})...", root);
             del dirs[0:];
             continue;
@@ -930,9 +961,9 @@ def run():
     tasks = [];
     log_info("Found {0} repos...", len(git_repos));
     for i in range(0, len(git_repos)):
-        log_info("Updating Repository ({0} of {1})", i+1, len(git_repos));
-
         git_repo = git_repos[i];
+        log_info("Updating Repository ({}) - ({} of {})", git_repo.name, i+1, len(git_repos));
+
         x = create_update_task(git_repo);
         if(x is not None):
             tasks.append(x);
