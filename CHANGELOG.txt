@@ -1,3 +1,12 @@
+//------------------------------------------------------------------------------
+v2.0.0 - 19/11/21
+    - [NEW] Start to use ark_bump_the_version to manage the version.
+    - [NEW] Reformat the version message.
+    - [NEW] Add the installation script for windows.
+    - [CHANGE] Remove the __dundler__ info and put into constants.
+    - [BUGFIX] Make the normalize path take care about / and \
+
+//------------------------------------------------------------------------------
 v1.1.0
     - [CHANGE] Show the name of the repository that's being pulled.
     - [ADD] Add the --help documentation.

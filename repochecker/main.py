@@ -30,17 +30,19 @@ import sys;
 import pdb;
 import argparse;
 import threading;
+import signal
+
 
 ##----------------------------------------------------------------------------##
 ## Info                                                                       ##
 ##----------------------------------------------------------------------------##
-## @TODO(stdmatt): Adjust the copyright information for 2021 - 3/16/2021, 10:48:56 AM
-__version__   = "1.0.0";
-__author__    = "stdmatt - <stdmatt@pixelwizards.io>";
-__date__      = "Apr 09, 2020";
-__copyright__ = "Copyright 2020 - stdmatt";
-__license__   = 'GPLv3';
-
+PROGRAM_NAME            = "repochecker";
+PROGRAM_VERSION         = "2.0.0";
+PROGRAM_AUTHOR          = "stdmatt - <stdmatt@pixelwizads.io>";
+PROGRAM_COPYRIGHT_OWNER = "stdmatt";
+PROGRAM_COPYRIGHT_YEARS = "2020, 2021";
+PROGRAM_DATE            = "09 April 2020";
+PROGRAM_LICENSE         = "GPLv3";
 
 ##----------------------------------------------------------------------------##
 ## Constants                                                                  ##
@@ -53,12 +55,10 @@ GIT_STATUS_COPIED    = "C";
 GIT_STATUS_UPDATED   = "U";
 GIT_STATUS_UNTRACKED = "??";
 
-PROGRAM_NAME      = "repochecker";
-PROGRAM_COPYRIGHT =  2020;
-NL                = "\n";
+NL                   = "\n";
 
 GLOBAL_REPOCHECKER_IGNORE_DIRPATH  = os.path.abspath(os.path.expanduser("~"));
-GLOBAL_REPOCHECKER_IGNORE_FULLPATH = os.path.join(GLOBAL_REPOCHECKER_IGNORE_DIRPATH, "./.repochecker_ignore");
+GLOBAL_REPOCHECKER_IGNORE_FULLPATH = os.path.join(GLOBAL_REPOCHECKER_IGNORE_DIRPATH, ".repochecker_ignore");
 
 
 ##----------------------------------------------------------------------------##
@@ -204,14 +204,16 @@ def show_help():
 
 ##------------------------------------------------------------------------------
 def show_version():
-    msg = """
-{program_name} - {version} - stdmatt <stdmatt@pixelwizards.io>
-Copyright (c) {copyright} - stdmatt
-This is a free software (GPLv3) - Share/Hack it
+    msg = """{program_name} - {program_version} - {program_author}
+Copyright (c) {program_copyright_years} - {program_copyright_owner}
+This is a free software ({program_license}) - Share/Hack it
 Check http://stdmatt.com for more :)""".format(
         program_name=PROGRAM_NAME,
-        version=__version__,
-        copyright=PROGRAM_COPYRIGHT
+        program_version=PROGRAM_VERSION,
+        program_author=PROGRAM_AUTHOR,
+        program_copyright_years=PROGRAM_COPYRIGHT_YEARS,
+        program_copyright_owner=PROGRAM_COPYRIGHT_OWNER,
+        program_license=PROGRAM_LICENSE,
     );
     print(msg);
     exit(0);
@@ -313,6 +315,7 @@ def get_home_path():
 
 ##------------------------------------------------------------------------------
 def normalize_path(path):
+    path = path.replace("\\", "/");
     path = os.path.expanduser(path);
     path = os.path.normcase  (path);
     path = os.path.normpath  (path);
@@ -917,6 +920,7 @@ def run():
         for l in lines:
             l = l.strip(" ").replace("\n", "");
             if(os.path.isdir(l)):
+                l = normalize_path(l);
                 Globals.directories_to_ignore.append(l);
             else:
                 log_warn("Invalid path: ({}) - Igoring it...", l);
@@ -933,7 +937,9 @@ def run():
             log_info("Found a recycle in at: ({})...", root);
             del dirs[0:];
             continue;
-        if(root in Globals.directories_to_ignore):
+
+        clean_root = normalize_path(root);
+        if(clean_root in Globals.directories_to_ignore):
             log_info("Global .repochecker_ignore says to ignore path: ({})...", root);
             continue;
         if(".repochecker_ignore" in files and os.path.abspath(root) != GLOBAL_REPOCHECKER_IGNORE_DIRPATH):

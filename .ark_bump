@@ -1,0 +1,7 @@
+[
+    {
+        "name": "Main Version",
+        "file": "./repochecker/main.py",
+        "content": "PROGRAM_VERSION = \"_VERSION_\""
+    }
+]
