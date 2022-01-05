@@ -11,13 +11,11 @@
 ##  Date      : Feb 12, 2020                                                  ##
 ##  License   : GPLv3                                                         ##
 ##  Author    : stdmatt <stdmatt@pixelwizards.io>                             ##
-##  Copyright : stdmatt - 2020                                                ##
+##  Copyright : stdmatt - 2020, 2022                                          ##
 ##                                                                            ##
 ##  Description :                                                             ##
 ##                                                                            ##
 ##---------------------------------------------------------------------------~##
-## @TODO(stdmatt): Adjust the header copyright information for 2021 - 3/16/2021, 10:48:56 AM
-
 
 ##----------------------------------------------------------------------------##
 ## Imports                                                                    ##
