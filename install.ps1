@@ -29,8 +29,8 @@ $HOME_DIR        = "$env:USERPROFILE";
 ## Program
 $PROGRAM_NAME         = "repochecker";
 $PROGRAM_SOURCE_PATH  = "$SCRIPT_DIR/$PROGRAM_NAME";
-$PROGRAM_INSTALL_PATH = "$HOME_DIR/.stdmatt_bin";
-$PROGRAM_INSTALL_SUBPATH = "$PROGRAM_INSTALL_PATH/$PROGRAM_NAME";
+$PROGRAM_INSTALL_ROOT_PATH = "$HOME_DIR/.stdmatt/bin";
+$PROGRAM_INSTALL_SUB_PATH = "$PROGRAM_INSTALL_ROOT_PATH/$PROGRAM_NAME";
 
 
 ##----------------------------------------------------------------------------##
@@ -40,21 +40,24 @@ $PROGRAM_INSTALL_SUBPATH = "$PROGRAM_INSTALL_PATH/$PROGRAM_NAME";
 echo "Installing ...";
 
 ## Create the install directory...
-if (-not (Test-Path -LiteralPath $PROGRAM_INSTALL_SUBPATH)) {
+if (-not (Test-Path -LiteralPath $PROGRAM_INSTALL_SUB_PATH)) {
     echo "Creating directory at: ";
-    echo "    $PROGRAM_INSTALL_SUBPATH";
-    $null = New-Item -Path $PROGRAM_INSTALL_SUBPATH -ItemType Directory;
+    echo "    $PROGRAM_INSTALL_SUB_PATH";
+    $null = New-Item -Path $PROGRAM_INSTALL_SUB_PATH -ItemType Directory;
 }
 
 ## Copy the file to the install dir...
 cp -Force $PROGRAM_SOURCE_PATH/main.py     `
-          $PROGRAM_INSTALL_SUBPATH/main.py
+          $PROGRAM_INSTALL_SUB_PATH/main.py
 
-echo "@echo off `npython3 $PROGRAM_INSTALL_SUBPATH/main.py %1 %2 %3 %4 %5 %6 %7 %8 %9" `
-    | Out-File -Encoding ASCII -FilePath $PROGRAM_INSTALL_PATH/$PROGRAM_NAME.bat
+## @notice(stdmatt): [BAT FILE]
+## Creating a batch file just that calls the actual program cause on Windows
+## we can't call the python intepreter directly from the command line script...
+echo "@echo off `npython3 $PROGRAM_INSTALL_SUB_PATH/main.py %1 %2 %3 %4 %5 %6 %7 %8 %9" `
+    | Out-File -Encoding ASCII -FilePath $PROGRAM_INSTALL_ROOT_PATH/$PROGRAM_NAME.bat
 
 echo "$PROGRAM_NAME was installed at:";
-echo "    $PROGRAM_INSTALL_PATH";
+echo "    $PROGRAM_INSTALL_ROOT_PATH";
 echo "You might need add it to the PATH";
 
 echo "Done... ;D";
