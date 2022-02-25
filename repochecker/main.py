@@ -35,7 +35,7 @@ import signal
 ## Info                                                                       ##
 ##----------------------------------------------------------------------------##
 PROGRAM_NAME            = "repochecker";
-PROGRAM_VERSION         = "2.0.0";
+PROGRAM_VERSION         = "3.0.0";
 PROGRAM_AUTHOR          = "stdmatt - <stdmatt@pixelwizads.io>";
 PROGRAM_COPYRIGHT_OWNER = "stdmatt";
 PROGRAM_COPYRIGHT_YEARS = "2020, 2021";
