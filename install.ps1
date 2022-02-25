@@ -25,12 +25,13 @@
 ## Script
 $SCRIPT_FULLPATH = $MyInvocation.MyCommand.Path;
 $SCRIPT_DIR      = Split-Path "$SCRIPT_FULLPATH" -Parent;
-$HOME_DIR        = "$env:USERPROFILE";
+$HOME_DIR        = if($HOME -eq "") { "$env:USERPROFILE" } else { $HOME };
 ## Program
-$PROGRAM_NAME         = "repochecker";
-$PROGRAM_SOURCE_PATH  = "$SCRIPT_DIR/$PROGRAM_NAME";
+$PROGRAM_NAME              = "repochecker";
+$DIRECTORY_NAME            = "${PROGRAM_NAME}_";
+$PROGRAM_SOURCE_PATH       = "$SCRIPT_DIR/$PROGRAM_NAME";
 $PROGRAM_INSTALL_ROOT_PATH = "$HOME_DIR/.stdmatt/bin";
-$PROGRAM_INSTALL_SUB_PATH = "$PROGRAM_INSTALL_ROOT_PATH/$PROGRAM_NAME";
+$PROGRAM_INSTALL_SUB_PATH  = "$PROGRAM_INSTALL_ROOT_PATH/$DIRECTORY_NAME";
 
 
 ##----------------------------------------------------------------------------##
@@ -43,18 +44,28 @@ echo "Installing ...";
 if (-not (Test-Path -LiteralPath $PROGRAM_INSTALL_SUB_PATH)) {
     echo "Creating directory at: ";
     echo "    $PROGRAM_INSTALL_SUB_PATH";
-    $null = New-Item -Path $PROGRAM_INSTALL_SUB_PATH -ItemType Directory;
+    $null = (New-Item -Path $PROGRAM_INSTALL_SUB_PATH -ItemType Directory -Force);
 }
 
 ## Copy the file to the install dir...
-cp -Force $PROGRAM_SOURCE_PATH/main.py     `
-          $PROGRAM_INSTALL_SUB_PATH/main.py
+Copy-Item -Force $PROGRAM_SOURCE_PATH/main.py     `
+                 $PROGRAM_INSTALL_SUB_PATH/main.py
 
-## @notice(stdmatt): [BAT FILE]
-## Creating a batch file just that calls the actual program cause on Windows
-## we can't call the python intepreter directly from the command line script...
-echo "@echo off `npython3 $PROGRAM_INSTALL_SUB_PATH/main.py %1 %2 %3 %4 %5 %6 %7 %8 %9" `
-    | Out-File -Encoding ASCII -FilePath $PROGRAM_INSTALL_ROOT_PATH/$PROGRAM_NAME.bat
+## @notice(stdmatt): [Program Launcher]
+##   Creating a batch file just that calls the actual program cause on Windows
+##   we can't call the python intepreter directly from the command line script...
+##   On Unix we just follow the same approach for consistency.
+$launcher_string   = "";
+$launcher_filename = "$PROGRAM_NAME";
+if($IsWindows) {
+    $launcher_string    = "@echo off `npython3 $PROGRAM_INSTALL_SUB_PATH/main.py %1 %2 %3 %4 %5 %6 %7 %8 %9";
+    $launcher_filename += ".bat";
+} else {
+    $launcher_string = "#!/usr/bin/env sh`npython3 $PROGRAM_INSTALL_SUB_PATH/main.py $@";
+}
+
+echo $launcher_string `
+    | Out-File -Encoding ASCII -FilePath $PROGRAM_INSTALL_ROOT_PATH/$launcher_filename;
 
 echo "$PROGRAM_NAME was installed at:";
 echo "    $PROGRAM_INSTALL_ROOT_PATH";
