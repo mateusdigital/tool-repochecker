@@ -50,7 +50,7 @@ Usage:
   --debug      : Prints extra information about the program execution.
   --no-colors  : Disables coloring the output.
 
-  --remote     : Fetches the status of the repo's remotes (slow).
+  --remote     : Fetches the status of the repos remotes (slow).
   --submodules : Makes the operations applies to submodules as well.
 
   --show-push  : Shows the information about changes to push.
