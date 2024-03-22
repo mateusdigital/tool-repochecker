@@ -1,17 +1,21 @@
 #!/usr/bin/env python3
 ##~---------------------------------------------------------------------------##
-##                        _      _                 _   _                      ##
-##                    ___| |_ __| |_ __ ___   __ _| |_| |_                    ##
-##                   / __| __/ _` | '_ ` _ \ / _` | __| __|                   ##
-##                   \__ \ || (_| | | | | | | (_| | |_| |_                    ##
-##                   |___/\__\__,_|_| |_| |_|\__,_|\__|\__|                   ##
+##                               *       +                                    ##
+##                         '                  |                               ##
+##                     ()    .-.,="``"=.    - o -                             ##
+##                           '=/_       \     |                               ##
+##                        *   |  '=._    |                                    ##
+##                             \     `=./`,        '                          ##
+##                          .   '=.__.=' `='      *                           ##
+##                 +                         +                                ##
+##                      O      *        '       .                             ##
 ##                                                                            ##
-##  File      : repochecker.py                                                ##
+##  File      : main.py                                                       ##
 ##  Project   : repochecker                                                   ##
 ##  Date      : Feb 12, 2020                                                  ##
-##  License   : GPLv3                                                         ##
-##  Author    : stdmatt <stdmatt@pixelwizards.io>                             ##
-##  Copyright : stdmatt - 2020, 2022                                          ##
+##  License   : See project's COPYING.TXT for full info.                      ##
+##  Author    : mateus.digital <hello@mateus.digital>                         ##
+##  Copyright : mateus.digital - 2020, 2022, 2024                             ##
 ##                                                                            ##
 ##  Description :                                                             ##
 ##                                                                            ##
@@ -35,10 +39,10 @@ import signal
 ## Info                                                                       ##
 ##----------------------------------------------------------------------------##
 PROGRAM_NAME            = "repochecker";
-PROGRAM_VERSION         = "3.0.0";
-PROGRAM_AUTHOR          = "stdmatt - <stdmatt@pixelwizads.io>";
-PROGRAM_COPYRIGHT_OWNER = "stdmatt";
-PROGRAM_COPYRIGHT_YEARS = "2020, 2021";
+PROGRAM_VERSION         = "3.1.0";
+PROGRAM_AUTHOR          = "mateus.digital <hello@mateus.digital>";
+PROGRAM_COPYRIGHT_OWNER = "mateus.digital";
+PROGRAM_COPYRIGHT_YEARS = "2020, 2021, 2024";
 PROGRAM_DATE            = "09 April 2020";
 PROGRAM_LICENSE         = "GPLv3";
 
@@ -205,7 +209,7 @@ def show_version():
     msg = """{program_name} - {program_version} - {program_author}
 Copyright (c) {program_copyright_years} - {program_copyright_owner}
 This is a free software ({program_license}) - Share/Hack it
-Check http://stdmatt.com for more :)""".format(
+Check http://mateus.digital for more :)""".format(
         program_name=PROGRAM_NAME,
         program_version=PROGRAM_VERSION,
         program_author=PROGRAM_AUTHOR,
@@ -980,5 +984,3 @@ def run():
     for i in range(0, len(git_repos)):
         git_repo = git_repos[i];
         git_repo.print_result();
-
-run();
