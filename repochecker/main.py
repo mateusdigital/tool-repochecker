@@ -984,3 +984,5 @@ def run():
     for i in range(0, len(git_repos)):
         git_repo = git_repos[i];
         git_repo.print_result();
+
+run();
