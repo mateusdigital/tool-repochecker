@@ -24,5 +24,5 @@ Write-Output "==> Installing repochecker...";
 # pip install --user .
 
 Copy-Item ./repochecker/main.py C:/Users/mateusdigital/.bin/_repochecker.py
-Write-Output "python C:/Users/mateusdigital/.bin/_repochecker.py $args" | Out-File C:/Users/mateusdigital/.bin/repochecker.ps1
+Write-Output "python C:/Users/mateusdigital/.bin/_repochecker.py `$args" | Out-File C:/Users/mateusdigital/.bin/repochecker.ps1
 Write-Output "==> Done...";
