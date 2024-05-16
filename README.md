@@ -20,7 +20,7 @@ As usual, you are **very welcomed** to **share** and **hack** it.
 ## Installing
 
 - Step 1: Clone the project.
-```poweshell
+```powershell
 git clone https://github.com/mateusdigital/repochecker
 cd repochecker
 ```
@@ -30,7 +30,7 @@ cd repochecker
 pip install --user . ## Using pip manually
 ```
 
-As convience there's a script for each platform to install it automatically.
+As convenience there's a script for each platform to install it automatically.
 ```powershell
 ./install.ps1 ## Powershell
 ./install.sh  ## Unix
