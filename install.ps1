@@ -23,13 +23,6 @@
 ## -----------------------------------------------------------------------------
 Write-Output "==> Installing repochecker...";
 
-if(-not $IsWindows) {
-  Write-Host "On non windows just run the following command:";
-  Write-Host "  pip install --user .";
-
-  return;
-}
-
 ## -----------------------------------------------------------------------------
 $PROGRAM_NAME = "repochecker"
 $INSTALL_ROOT = "${HOME}/.mateusdigital/bin";
@@ -38,7 +31,7 @@ $INSTALL_DIR  = "${INSTALL_ROOT}/${PROGRAM_NAME}";
 ## -----------------------------------------------------------------------------
 New-Item -Path "${INSTALL_DIR}" -ItemType Directory -Force | Out-Null;
 Copy-Item ./repochecker/main.py "${INSTALL_DIR}/_repochecker.py"
-Write-Output "python ${INSTALL_DIR}/_repochecker.py `$args" | Out-File "${INSTALL_ROOT}/repochecker.ps1";
+Write-Output "python3 ${INSTALL_DIR}/_repochecker.py `$args" | Out-File "${INSTALL_ROOT}/repochecker.ps1";
 
 Write-Output "$PROGRAM_NAME was installed at:";
 Write-Output "    $INSTALL_ROOT";
