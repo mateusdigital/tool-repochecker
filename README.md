@@ -1,91 +1,195 @@
-# repochecker
-
-**Made with <3 by [mateus.digital](https://mateus.digital).**
-
-## Description:
-
 <p align="center">
-    <img style="border-radius: 10px;" src="./resources/readme_game.gif"/>
+  <b>repochecker</b>
 </p>
 
-```repochecker``` - simplifies multiple git repository management by providing clear insights into what needs to be pushed, pulled, or is modified.  
+<p align="center">
+    <a href="https://github.com/SaturnoSoftware/repochecker/releases"><img src="https://badgen.net/github/release/SaturnoSoftware/repochecker?cache=600" alt="latest release"></a>
+    <a href="https://github.com/SaturnoSoftware/repochecker/commits"><img src="https://badgen.net/github/commits/SaturnoSoftware/repochecker?cache=600" alt="commits"></a>
+    <a href="./COPYING.txt"><img src="https://badgen.net/badge/license/GPLv3/blue" alt="License: GPLv3"></a>
+    <a href="./tests"><img src="https://badgen.net/badge/tests/CI%20verified/green" alt="Tests: CI verified"></a>
+    <a href="https://github.com/SaturnoSoftware/repochecker"><img src="https://badgen.net/badge/platform/macOS%20%7C%20Linux%20%7C%20Windows/blue" alt="Platform"></a>
+</p>
 
-It handles submodules, syncs with remotes, and offers flexible customization options. With repochecker, stay organized and up-to-date across all your repositories juggling with ease.
+<p align="center">
+  <b>Check every Git repo from one command.</b> See local changes, remote drift, and submodules fast.
+  <br>
+  <br>
+</p>
 
-<br>
+**repochecker** is a Python CLI for developers who maintain many Git repositories. It scans a directory tree, finds repositories, reports dirty branches, shows commits waiting to push or pull, and can include submodules when needed.
 
-As usual, you are **very welcomed** to **share** and **hack** it.
+Maintained by [Saturno.Software](https://saturno.software/).
 
+---
 
-## Installing
+## Quick Start
 
-- Step 1: Clone the project.
-```powershell
-git clone https://github.com/mateusdigital/repochecker
+<p align="center">
+    <img style="border-radius: 10px;" src="./resources/readme_game.gif" alt="repochecker demo">
+</p>
+
+```bash
+git clone https://github.com/SaturnoSoftware/repochecker
 cd repochecker
+
+./install.sh   # bash
+./install.ps1  # powershell
+
+repochecker ~/Projects
+repochecker --remote --show-all ~/Projects
 ```
 
--- Step 2: Install it.
-```powershell
-pip install --user . ## Using pip manually
+---
+
+## Features
+
+- **Workspace Scan** -- Finds Git repositories under a starting directory
+- **Remote Drift** -- Shows commits waiting to pull or push
+- **Submodule Support** -- Includes nested submodules when requested
+- **Safe Auto Pull** -- Pulls only clean current branches with `--auto-pull`
+- **Force Pull Mode** -- Discards local changes before pulling when explicitly requested
+- **Short Output** -- Condenses status for quick terminal review
+- **JSON Metadata** -- Exposes Saturno CLI discovery data through `--json`
+- **Zero Runtime Dependencies** -- Requires Python 3 and Git only
+
+---
+
+## Installation
+
+### From Source
+
+```bash
+git clone https://github.com/SaturnoSoftware/repochecker
+cd repochecker
+
+./install.sh   # bash
+./install.ps1  # powershell
 ```
 
-As convenience there's a script for each platform to install it automatically.
-```powershell
-./install.ps1 ## Powershell
-./install.sh  ## Unix
+### From a Packaged Release
+
+The install scripts also work from a packaged release root under `__DIST/<release-name>/`.
+
+### Requirements
+
+- Python 3
+- Git
+- Bash or PowerShell for shell wrappers
+
+### Install Location
+
+```text
+~/.saturnosoftware/repochecker/
+  package.json
+  bin/
+    repochecker.py
+    repochecker.sh
+    repochecker.ps1
+  config/
+  data/
 ```
 
-## Usage:
-```powershell
+---
+
+## Usage
+
+```text
 Usage:
   repochecker [--help] [--version]
   repochecker [--debug] [--no-colors]
-  repochecker [--remote] [--auto-pull]
+  repochecker [--remote] [--auto-pull] [--force-pull]
   repochecker [--submodules]
   repochecker [--show-push] [--show-pull] [--show-all]
   repochecker [--short]
-  repochecker <start-path>
-
-  --debug      : Prints extra information about the program execution.
-  --no-colors  : Disables coloring the output.
-
-  --remote     : Fetches the status of the repos remotes (slow).
-  --submodules : Makes the operations applies to submodules as well.
-
-  --show-push  : Shows the information about changes to push.
-  --show-pull  : Shows the information about changes to pull.
-  --show-all   : Implies --show-push and --show-pull.
-
-  --short      : Displays the information into a condensed format.
+  repochecker [-Json | --json]
+  repochecker [<start-path>]
 
 Options:
   *-h --help     : Show this screen.
   *-v --version  : Show program version and copyright.
-
-Notes:
-  <start-path> if not given is assumed to be the current working directory.
-
-  Options marked with * are exclusive, i.e. the repochecker will run that
-  and exit after the operation.
+  *-Json --json  : Print structured CLI metadata for help/version consumers.
 ```
 
-## Dependencies:
+### Common Commands
 
-- None - just a normal python3 installation.
+```bash
+# Scan from the current directory
+repochecker
 
-## License:
+# Scan another workspace
+repochecker ~/Projects
 
-This software is released under [GPLv3](https://www.gnu.org/licenses/gpl-3.0.en.html).
+# Fetch remote state and show both pull and push drift
+repochecker --remote --show-all ~/Projects
 
+# Include submodules
+repochecker --submodules ~/Projects
 
-## Others:
+# Print condensed output
+repochecker --short --show-all ~/Projects
 
-- Email: hello@mateus.digital
-- Website: https://mateus.digital
-- Itch.io: https://mateusdigital.itch.io
-- Linkedin: https://www.linkedin.com/in/mateusdigital
-- Twitter: https://www.twitter.com/_mateusdigital
-- Youtube: https://www.youtube.com/@_mateusdigital
+# Print Saturno CLI metadata
+repochecker --json
+```
 
-There's more FLOSS things at [mateus.digital](https://mateus.digital) :)
+---
+
+## Local Development
+
+```powershell
+npm test
+npm run build
+pwsh ./Saturno.CICD/build.ps1 -ProjectRoot . -BuildNumber 1
+pwsh ./Saturno.CICD/package.ps1 -ProjectRoot . -BuildNumber 1
+```
+
+---
+
+## Repository Layout
+
+```text
+repochecker/
+  repochecker/       Python CLI and shell wrappers
+  Scripts/           Local build, test, and package entrypoints
+  Saturno.CICD/      Saturno build/test/package contract wrappers
+  tests/             Python unittest suite
+  .github/           GitHub Actions quality and release workflows
+```
+
+---
+
+## Contributing
+
+Contributions welcome. Add tests for behavior changes, keep the CLI metadata truthful, and run the Saturno build/test/package flow before submitting a pull request.
+
+---
+
+## License
+
+GPLv3 -- See [COPYING.txt](./COPYING.txt) for details.
+
+---
+
+## FAQ
+
+**Q: Does repochecker need admin/root access?**  
+A: No. It runs against repositories you can already access and installs under your home directory.
+
+**Q: Does `--auto-pull` overwrite local work?**  
+A: No. `--auto-pull` skips dirty branches. Only `--force-pull` is destructive, and it must be passed explicitly.
+
+**Q: Can automation discover the command surface?**  
+A: Yes. Use `repochecker --json` or `repochecker -Json`.
+
+---
+
+## Links
+
+- [GitHub Repository](https://github.com/SaturnoSoftware/repochecker)
+- [Saturno.Software](https://saturno.software/)
+
+---
+
+<p align="center">
+  <b>Made with &lt;3 by Saturno.Software</b>
+</p>

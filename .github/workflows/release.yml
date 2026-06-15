@@ -1,0 +1,77 @@
+name: release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    name: Validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup project
+        uses: ./.github/actions/setup
+
+      - name: Run tests
+        shell: pwsh
+        run: ./Saturno.CICD/test.ps1 -ProjectRoot $PWD
+
+  publish:
+    name: Publish
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: [validate]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup project
+        uses: ./.github/actions/setup
+
+      - name: Build
+        shell: pwsh
+        run: ./Saturno.CICD/build.ps1 -ProjectRoot $PWD -BuildNumber $env:GITHUB_RUN_NUMBER
+
+      - name: Package
+        id: package
+        shell: pwsh
+        run: ./Saturno.CICD/package.ps1 -ProjectRoot $PWD -BuildNumber $env:GITHUB_RUN_NUMBER
+
+      - name: Publish GitHub release asset
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ARCHIVE_PATH: ${{ steps.package.outputs.archive_path }}
+        run: |
+          $ErrorActionPreference = "Stop"
+          $tag = $env:GITHUB_REF_NAME
+          $archive = $env:ARCHIVE_PATH
+          if (-not (Test-Path -LiteralPath $archive -PathType Leaf)) {
+            throw "Release archive not found: $archive"
+          }
+          gh release view $tag *> $null
+          if ($LASTEXITCODE -ne 0) {
+            gh release create $tag --title $tag --notes "Release $tag"
+            if ($LASTEXITCODE -ne 0) {
+              throw "gh release create failed."
+            }
+          }
+          gh release upload $tag $archive --clobber
+          if ($LASTEXITCODE -ne 0) {
+            throw "gh release upload failed."
+          }

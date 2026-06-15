@@ -1,0 +1,28 @@
+{
+  "name": "repochecker",
+  "version": "3.1.0",
+  "build": 3,
+  "description": "CLI tool for checking many Git repositories and submodules from one command.",
+  "license": "GPL-3.0-or-later",
+  "scripts": {
+    "build": "pwsh -NoLogo -NoProfile -File ./Scripts/build.ps1 -ProjectRoot . -BuildOutputDir __BUILD/_staging",
+    "test": "pwsh -NoLogo -NoProfile -File ./Scripts/test.ps1 -ProjectRoot .",
+    "package": "pwsh -NoLogo -NoProfile -File ./Scripts/package.ps1"
+  },
+  "saturno": {
+    "cicd": {
+      "artifactPrefix": "Saturno.RepoChecker",
+      "build": {
+        "stagingRoot": "__BUILD/_staging",
+        "expectedFiles": [
+          "App/repochecker.py",
+          "App/repochecker.ps1",
+          "App/repochecker.sh",
+          "package.json",
+          "install.sh",
+          "install.ps1"
+        ]
+      }
+    }
+  }
+}

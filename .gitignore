@@ -2,6 +2,11 @@
 .DS_Store
 dist/
 build/
+__BUILD/
+__DIST/
+.coverage
+htmlcov/
 repochecker.egg-info
 *.pyc
+__pycache__/
 .vscode/
